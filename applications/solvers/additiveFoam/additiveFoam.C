@@ -99,6 +99,11 @@ int main(int argc, char *argv[])
 
         runTime.write();
 
+        if (runTime.writeTime())
+        {
+            sources.qDot().write();
+        }
+
         Info<< "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
             << "  ClockTime = " << runTime.elapsedClockTime() << " s"
             << nl << endl;

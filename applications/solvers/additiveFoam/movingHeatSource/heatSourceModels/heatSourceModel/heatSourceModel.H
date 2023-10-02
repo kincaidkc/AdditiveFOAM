@@ -88,6 +88,8 @@ protected:
 
         scalar isoValue_;
 
+        vector dx_;
+
         vector dimensions_;
 
         vector staticDimensions_;
@@ -187,7 +189,11 @@ public:
         }
 
         //- Return the volumetric heating field
-        virtual tmp<volScalarField> qDot() const = 0;
+        virtual tmp<volScalarField> qDot();
+
+        virtual scalar factor(const vector& d) = 0;
+
+        virtual dimensionedScalar I0() = 0;
 
         //- Read the heat source dictionary
         virtual bool read() = 0;

@@ -27,6 +27,8 @@ License
 
 #include "superGaussian.H"
 #include "addToRunTimeSelectionTable.H"
+#include "multiDirRefinement.H"
+#include "labelVector.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -59,6 +61,42 @@ Foam::heatSourceModels::superGaussian::superGaussian
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
+inline Foam::scalar
+Foam::heatSourceModels::superGaussian::factor(const vector& d)
+{
+    vector s = dimensions_ / Foam::pow(2.0, 1.0/k_);
+
+    scalar x = Foam::pow(magSqr(cmptDivide(d, s)), k_/2.0);
+
+    return Foam::exp(-x);
+}
+
+inline Foam::dimensionedScalar
+Foam::heatSourceModels::superGaussian::I0()
+{
+    const scalar power_ = movingBeam_->power();
+
+    const scalar AR = 
+        dimensions_.z() / min(dimensions_.x(), dimensions_.y());
+    
+    const scalar eta_ = absorptionModel_->eta(AR);
+
+    vector s = dimensions_ / Foam::pow(2.0, 1.0/k_);
+
+    const dimensionedScalar I0
+    (
+        "I0",
+        dimPower / dimVolume,
+        eta_*power_*k_
+      / (s.x()*s.y()*s.z()*2.0*pi*Foam::tgamma(3.0/k_))
+    );
+
+    return I0;
+}
+
+
+
+/*
 Foam::tmp<Foam::volScalarField>
 Foam::heatSourceModels::superGaussian::qDot()
 const
@@ -101,8 +139,8 @@ const
           / (s.x()*s.y()*s.z()*2.0*pi*Foam::tgamma(3.0/k_))
         );
 
-        //- Calculate heat source weights a cell-faces
-        surfaceScalarField factor
+        // change sampling location for gaussian
+        volScalarField factor
         (
             IOobject
             (
@@ -116,44 +154,90 @@ const
             dimensionedScalar("Zero", dimless, 0.0)          
         );
 
-        for (label facei=0; facei < mesh_.nInternalFaces(); facei++)
+        vector dx = vector(5e-6,  5e-6, 5e-6);
+
+        const cellList& cells = mesh_.cells();
+        const faceList& faces = mesh_.faces();
+        const pointField& points = mesh_.points();
+
+        forAll(mesh_.cells(), celli)
         {
-            point d = cmptMag(mesh_.Cf()[facei] - movingBeam_->position());
+            treeBoundBox beamBb
+            (
+                movingBeam_->position() - 3.0*dimensions_,
+                movingBeam_->position() + 3.0*dimensions_
+            );
 
-            scalar f = magSqr(cmptDivide(d, s));
+            const cell& c = cells[celli];
 
-            factor[facei] = Foam::exp(-Foam::pow(f, k_/2.0));
-        }
-
-        surfaceScalarField::Boundary& bFactor = factor.boundaryFieldRef();
-        forAll(bFactor, patchi)
-        {
-            const pointField& faceCentres = mesh_.Cf().boundaryField()[patchi];
-            forAll(faceCentres, facei)
+            treeBoundBox cellBb(point::max, point::min);
+            forAll(c, facei)
             {
-                point d = cmptMag(faceCentres[facei] - movingBeam_->position());
+                const face& f = faces[c[facei]];
+                forAll(f, fp)
+                {
+                    cellBb.min() = min(cellBb.min(), points[f[fp]]);
+                    cellBb.max() = max(cellBb.max(), points[f[fp]]);
+                }
+            }
 
-                scalar f = magSqr(cmptDivide(d, s));
+            if (cellBb.overlaps(beamBb))
+            {
+                labelVector nPoints
+                (
+                    cmptDivide
+                    (
+                        (cellBb.span() + small*vector::one),
+                        dx
+                    )
+                );
 
-                bFactor[patchi][facei] = Foam::exp(-Foam::pow(f, k_/2.0));
+                nPoints = max(nPoints, labelVector(1, 1, 1));
+
+                vector dxi = cmptDivide(cellBb.span(), vector(nPoints));
+
+                scalar dVi = dxi.x() * dxi.y() * dxi.z();
+
+                scalar Vi = 0;
+
+                for (label k=0; k < nPoints.z(); ++k)
+                {
+                    for (label j=0; j < nPoints.y(); ++j)
+                    {
+                        for (label i=0; i < nPoints.x(); ++i)
+                        {
+                            const point pt
+                            (
+                                cellBb.max()
+                              - cmptMultiply
+                                (
+                                    vector(i + 0.5, j + 0.5, k + 0.5),
+                                    dxi
+                                )
+                            );
+
+                            point d = cmptMag(pt - movingBeam_->position());
+
+                            scalar f = magSqr(cmptDivide(d, s));
+
+                            factor[celli] += 
+                                Foam::exp(-Foam::pow(f, k_/2.0)) * dVi;
+
+                            Vi += dVi;
+                        }
+                    }
+                }
+
+                factor[celli] /= Vi;
             }
         }
 
-        qDot_ = I0 * fvc::average(factor);
-
-        //- Rescale the total integrated power to the applied power
-        scalar integratedPower_ = fvc::domainIntegrate(qDot_).value() / eta_;
-
-        if (integratedPower_ > small)
-        {
-            qDot_ *= power_ / integratedPower_;
-        }
-
-        qDot_.correctBoundaryConditions();
+        qDot_ = I0 * factor;
     }
 
     return tqDot;
 }
+*/
 
 bool Foam::heatSourceModels::superGaussian::read()
 {

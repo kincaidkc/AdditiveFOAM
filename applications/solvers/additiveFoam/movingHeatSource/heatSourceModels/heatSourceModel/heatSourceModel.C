@@ -26,6 +26,8 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "heatSourceModel.H"
+#include "labelVector.H"
+#include "hexMatcher.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -102,10 +104,149 @@ Foam::heatSourceModel::heatSourceModel
     {
         isoValue_ = heatSourceModelCoeffs_.lookup<scalar>("isoValue");
     }
+
+    dx_ = heatSourceModelCoeffs_.lookupOrDefault<vector>("dx", vector::one);
 }
 
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
+
+Foam::tmp<Foam::volScalarField>
+Foam::heatSourceModel::qDot()
+{
+    hexMatcher hex;
+
+    tmp<volScalarField> tqDot
+    (
+        new volScalarField
+        (
+            IOobject
+            (
+                "qDot_",
+                mesh_.time().timeName(),
+                mesh_,
+                IOobject::NO_READ,
+                IOobject::NO_WRITE
+            ),
+            mesh_,
+            dimensionedScalar("Zero", dimPower/dimVolume, 0.0)
+        )
+    );
+    volScalarField& qDot_ = tqDot.ref();
+
+    const scalar power_ = movingBeam_->power();
+    const vector position_ = movingBeam_->position();
+
+    if (power_ > small)
+    {
+        volScalarField f
+        (
+            IOobject
+            (
+                "f",
+                mesh_.time().timeName(),
+                mesh_,
+                IOobject::NO_READ,
+                IOobject::NO_WRITE
+            ),
+            mesh_,
+            dimensionedScalar("Zero", dimless, 0.0)          
+        );
+
+        const cellList& cells = mesh_.cells();
+        const faceList& faces = mesh_.faces();
+        const pointField& points = mesh_.points();
+
+        treeBoundBox beamBb
+        (
+            position_ - 3.0*dimensions_,
+            position_ + 3.0*dimensions_
+        );
+
+        forAll(mesh_.cells(), celli)
+        {
+            const cell& c = cells[celli];
+
+            treeBoundBox cellBb(point::max, point::min);
+            forAll(c, facei)
+            {
+                const face& f = faces[c[facei]];
+                forAll(f, fp)
+                {
+                    cellBb.min() = min(cellBb.min(), points[f[fp]]);
+                    cellBb.max() = max(cellBb.max(), points[f[fp]]);
+                }
+            }
+
+            if (cellBb.overlaps(beamBb))
+            {
+                if (hex.isA(mesh_, celli))
+                {
+                    labelVector nPoints
+                    (
+                        cmptDivide
+                        (
+                            (cellBb.span() + small*vector::one),
+                            dx_
+                        )
+                    );
+
+                    // cell is finer than target resolution, evaluate at centre
+                    nPoints = max(nPoints, labelVector(1, 1, 1));
+
+                    vector dxi = cmptDivide(cellBb.span(), vector(nPoints));
+
+                    scalar dVi = dxi.x() * dxi.y() * dxi.z();
+
+                    scalar fi = 0.0;
+
+                    for (label k=0; k < nPoints.z(); ++k)
+                    {
+                        for (label j=0; j < nPoints.y(); ++j)
+                        {
+                            for (label i=0; i < nPoints.x(); ++i)
+                            {
+                                const point pt
+                                (
+                                    cellBb.max()
+                                  - cmptMultiply
+                                    (
+                                        vector(i + 0.5, j + 0.5, k + 0.5),
+                                        dxi
+                                    )
+                                );
+
+                                treeBoundBox ptBb(pt - 0.5*dxi, pt + +0.5*dxi);
+
+                                // calculate weight for point in beam bound box
+                                if (beamBb.overlaps(ptBb))
+                                {
+                                    point d = cmptMag(pt - position_);
+
+                                    fi += factor(d) * dVi;
+                                }
+                            }
+                        }
+                    }
+
+                    f[celli] = fi / mesh_.V()[celli];
+                }
+                else
+                {
+                    // cell is not hexahedral, evaluate at centre
+                    point d = cmptMag(mesh_.cellCentres()[celli] - position_);
+
+                    f[celli] = factor(d);
+                }
+            }
+        }
+
+        qDot_ = I0() * f;
+    }
+
+    return tqDot;
+}
+
 
 bool Foam::heatSourceModel::read()
 {
