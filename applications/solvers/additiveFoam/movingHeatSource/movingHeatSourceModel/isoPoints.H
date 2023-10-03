@@ -35,6 +35,8 @@ Description
 #ifndef isoPoints_H
 #define isoPoints_H
 
+using namespace Foam;
+
 List<point> isoPoints(const volScalarField& field, const scalar& iso)
 {
     // set local reference to mesh data

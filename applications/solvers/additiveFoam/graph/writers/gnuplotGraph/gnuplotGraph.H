@@ -2,10 +2,8 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2011-2021 OpenFOAM Foundation
      \\/     M anipulation  |
--------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -24,27 +22,20 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::foamToExaca
+    Foam::gnuplotGraph
 
 Description
-    A utility for interpolating temperature data to a uniform cartestian grid
-    and writes the data in the ExaCA data format.
+    Output in gnuplot (http://www.gnuplot.info) format
 
 SourceFiles
-    foamToExaca.C
+    gnuplotGraph.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef foamToExaCA_H
-#define foamToExaCA_H
-    
-#include "IOdictionary.H"
-#include "volFields.H"
-#include "volPointInterpolation.H"
-#include "treeBoundBox.H"
-#include "OSspecific.H"
-#include "argList.H"
-#include "OFstream.H"
+#ifndef gnuplotGraph_H
+#define gnuplotGraph_H
+
+#include "graph.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -52,54 +43,50 @@ namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-         Class foamToExaca Declaration
+                        Class gnuplotGraph Declaration
 \*---------------------------------------------------------------------------*/
 
-class foamToExaCA
+class gnuplotGraph
 :
-    public IOdictionary
+    public graph::writer
 {
-private:
-    // Private data
-
-        //- Reference to the mesh
-        const fvMesh& mesh_;
-        const Time& runTime_;
-
-        const volScalarField& T_;
-
-        //volPointInterpolation vpi_;
-        mutable pointScalarField Tp_;
-
-        List<DynamicList<label>> pointsInCell;
-
-        DynamicList<point> positions;
-        DynamicList<scalarField> weights;
-
-        DynamicList<List<scalar>> data;
-        List<scalar> tm_;
-
-        Switch    execute_;
-        boundBox  box_;
-        scalar    dx_;
-        scalar    iso_;
 
 public:
-    TypeName("foamToExaCA");
 
-    // Construct from temperature field
-    foamToExaCA(const volScalarField& T);
+    //- Runtime type information
+    TypeName("gnuplot");
+
+    //- FileName extension  for this graph format
+    static const word ext_;
+
+
+    // Constructors
+
+        //- Construct null
+        gnuplotGraph()
+        {}
+
 
     //- Destructor
-    virtual ~foamToExaCA()
+    ~gnuplotGraph()
     {}
 
+
     // Member Functions
-    virtual void initialize();
 
-    virtual void update();
+        // Access
 
-    virtual void write();
+            //- Return the appropriate fileName extension
+            //  for this graph format
+            const word& ext() const
+            {
+                return ext_;
+            }
+
+
+        // Write
+
+            void write(const graph&, Ostream& os) const;
 };
 
 
@@ -109,13 +96,6 @@ public:
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-#ifdef NoRepository
-    #include "foamToExaCA/foamToExaCA.C"
-#endif
-
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
 #endif
 
 // ************************************************************************* //
-

@@ -41,6 +41,7 @@ SourceFiles
 #include "volFields.H"
 #include "movingBeam.H"
 #include "absorptionModel.H"
+#include "treeBoundBox.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

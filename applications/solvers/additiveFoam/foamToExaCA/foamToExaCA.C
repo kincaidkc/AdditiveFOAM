@@ -70,7 +70,7 @@ Foam::foamToExaCA::foamToExaCA
 
     T_(T),
 
-    vpi_(mesh_),
+    //vpi_(mesh_),
 
     Tp_
     (
@@ -82,7 +82,8 @@ Foam::foamToExaCA::foamToExaCA
             IOobject::NO_READ,
             IOobject::NO_WRITE
         ),
-        vpi_.interpolate(T_)
+        //vpi_.interpolate(T_)
+        volPointInterpolation::New(mesh_).interpolate(T_)
     ),
 
     pointsInCell(mesh_.nCells()),
@@ -182,7 +183,8 @@ void Foam::foamToExaCA::update()
     // interpolate temperature histories to cell vertices
     const pointScalarField Tp0_("Tp0_", Tp_);
 
-    Tp_ = vpi_.interpolate(T_);
+    //Tp_ = vpi_.interpolate(T_);
+    Tp_ = volPointInterpolation::New(mesh_).interpolate(T_);
 
     // calculate the local cooling rate in each cell
     volScalarField R_
@@ -196,7 +198,8 @@ void Foam::foamToExaCA::update()
     );
     
     // interpolate the average cooling rate to the cell vertices
-    const pointScalarField Rp_(vpi_.interpolate(fvc::average(R_)));
+    //const pointScalarField Rp_(vpi_.interpolate(fvc::average(R_)));
+    const pointScalarField Rp_(volPointInterpolation::New(mesh_).interpolate(fvc::average(R_)));
 
     const scalar dt = runTime_.deltaTValue();
     const scalar t0 = runTime_.value() - dt;
