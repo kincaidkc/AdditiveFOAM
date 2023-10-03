@@ -9,45 +9,35 @@ FoamFile
 {
     version     2.0;
     format      ascii;
-    class       dictionary;
-    location    "system";
-    object      controlDict;
+    class       volScalarField;
+    location    "0";
+    object      alpha.solid;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-application     additiveFoam;
+dimensions      [0 0 0 0 0 0 0];
 
-startFrom       startTime;
+internalField   uniform 1;
 
-startTime       0;
+boundaryField
+{
+    bottom
+    {
+        type            zeroGradient;
+    }
+    top
+    {
+        type            zeroGradient;
+    }
+    sides
+    {
+        type            zeroGradient;
+    }
+    internal
+    {
+        type            internal;
+    }
+}
 
-stopAt          endTime;
 
-endTime         0.006;
-
-deltaT          1e-7;
-
-writeControl    adjustableRunTime;
-
-writeInterval   0.0005;
-
-purgeWrite      0;
-
-writeFormat     binary;
-
-writePrecision  8;
-
-writeCompression off;
-
-timeFormat      general;
-
-timePrecision   8;
-
-runTimeModifiable yes;
-
-adjustTimeStep  yes;
-
-maxCo           0.5;
-maxFo           100;
-maxAlphaCo      1;
 // ************************************************************************* //
