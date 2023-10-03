@@ -64,7 +64,7 @@ Foam::foamToExaCA::foamToExaCA
 
     T_(T),
 
-    vpi_(mesh_),
+    //vpi_(mesh_),
 
     Tp_
     (
@@ -76,7 +76,8 @@ Foam::foamToExaCA::foamToExaCA
             IOobject::NO_READ,
             IOobject::NO_WRITE
         ),
-        vpi_.interpolate(T_)
+        //vpi_.interpolate(T_)
+        volPointInterpolation::New(mesh_).interpolate(T_)
     ),
 
     execute_(false)
@@ -150,7 +151,8 @@ void Foam::foamToExaCA::update()
 
     const pointScalarField Tp0_("Tp0_", Tp_);
 
-    Tp_ = vpi_.interpolate(T_);
+    //Tp_ = vpi_.interpolate(T_);
+    Tp_ = volPointInterpolation::New(mesh_).interpolate(T_);
 
     // capture events at interface cells: {cell id, time, vertice temperatures}
     forAll(compactCells, i)

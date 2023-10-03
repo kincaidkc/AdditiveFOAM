@@ -2,10 +2,8 @@
   =========                 |
   \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
    \\    /   O peration     | Website:  https://openfoam.org
-    \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
+    \\  /    A nd           | Copyright (C) 2011-2021 OpenFOAM Foundation
      \\/     M anipulation  |
--------------------------------------------------------------------------------
-                Copyright (C) 2023 Oak Ridge National Laboratory                
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
@@ -24,79 +22,72 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::movingHeatSourceModel
+    Foam::xmgrGraph
 
 Description
-    Class for multiple moving beam heat sources
+    Output and \b agr file for \em xmgrace
+    (http://plasma-gate.weizmann.ac.il/Grace/)
 
 SourceFiles
-    movingHeatSourceModel.C
-    calculateQDot.C
+    xmgrGraph.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef movingHeatSourceModel_H
-#define movingHeatSourceModel_H
+#ifndef xmgrGraph_H
+#define xmgrGraph_H
+
+#include "graph.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
-
-#include "heatSourceModel.H"
-#include "movingBeam.H"
 
 namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                          Class movingHeatSourceModel Declaration
+                          Class xmgrGraph Declaration
 \*---------------------------------------------------------------------------*/
 
-class movingHeatSourceModel
+class xmgrGraph
+:
+    public graph::writer
 {
-private:
-
-    // Private data
-
-        //- Pointer to mesh information
-        const fvMesh& mesh_;
-        
-        //- Main movingHeatSourceDict
-        IOdictionary dict_;
-        
-        //- List of individual heat sources
-        wordList sourceNames_;
-        
-        //- Total volumetric power of all beams
-        volScalarField qDot_;
-                
-        //- Pointer list to each beam instance
-        PtrList<heatSourceModel> sources_;
 
 public:
 
+    //- Runtime type information
+    TypeName("xmgr");
+
+    //- FileName extension  for this graph format
+    static const word ext_;
+
+
     // Constructors
 
-        // Construct from time and dictionary
-        movingHeatSourceModel
-        (
-            const fvMesh& mesh
-        );
+        //- Construct null
+        xmgrGraph()
+        {}
+
 
     //- Destructor
-    ~movingHeatSourceModel();
+    ~xmgrGraph()
+    {}
+
 
     // Member Functions
-    
-        //- Return const access to the total volumetric heating
-        const volScalarField& qDot() const
-        {
-            return qDot_;
-        }
-        
-        //- Adjust deltaT using the current state of each beam
-        void adjustDeltaT(scalar& deltaT);
-        
-        //- Update total qDot field
-        void update();
+
+        // Access
+
+            //- Return the appropriate fileName extension
+            //  for this graph format
+            const word& ext() const
+            {
+                return ext_;
+            }
+
+
+        // Write
+
+            void write(const graph&, Ostream& os) const;
 };
 
 
@@ -109,4 +100,3 @@ public:
 #endif
 
 // ************************************************************************* //
-

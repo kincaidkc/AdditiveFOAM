@@ -41,7 +41,14 @@ SourceFiles
 #include "IOdictionary.H"
 #include "volFields.H"
 #include "volPointInterpolation.H"
+<<<<<<< HEAD
 #include "meshSearch.H"
+=======
+#include "treeBoundBox.H"
+#include "OSspecific.H"
+#include "argList.H"
+#include "OFstream.H"
+>>>>>>> 1b14ea8 (OF11 changes pt 1)
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -65,10 +72,9 @@ private:
 
         const volScalarField& T_;
 
-        volPointInterpolation vpi_;
-
+        //volPointInterpolation vpi_;
+        
         mutable pointScalarField Tp_;
-
 
         List<DynamicList<label>> pointsInCell;
 

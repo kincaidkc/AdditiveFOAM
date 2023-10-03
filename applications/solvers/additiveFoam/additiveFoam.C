@@ -31,21 +31,36 @@ Description
     
 \*---------------------------------------------------------------------------*/
 
-#include "fvCFD.H"
 #include "pimpleControl.H"
 
-#include "graph.H"
 #include "Polynomial.H"
 
 #include "interpolateXY/interpolateXY.H"
+#include "graph/graph.H"
 
 #include "movingHeatSourceModel.H"
 #include "foamToExaCA/foamToExaCA.H"
+
+#include "argList.H"
+#include "timeSelector.H"
+#include "zeroGradientFvPatchFields.H"
+#include "IFstream.H"
+#include "uniformDimensionedFields.H"
+#include "pressureReference.H"
+#include "findRefCell.H"
+
+#include "fvmDiv.H"
+#include "fvmDdt.H"
+#include "fvmLaplacian.H"
+#include "constrainPressure.H"
+#include "constrainHbyA.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 int main(int argc, char *argv[])
 {
+    using namespace Foam;
+
     #include "postProcess.H"
 
     #include "setRootCase.H"
