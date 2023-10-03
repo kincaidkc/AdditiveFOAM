@@ -1,3 +1,4 @@
+graph/curve/curve.C
 graph/graph.C
 
 additiveFoam.C
