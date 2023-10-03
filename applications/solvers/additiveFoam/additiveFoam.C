@@ -66,9 +66,10 @@ int main(int argc, char *argv[])
     #include "setRootCase.H"
     #include "createTime.H"
     #include "createMesh.H"
-    #include "createControl.H"
+    #include "createDyMControls.H"
+    //#include "createControl.H"
     #include "createFields.H"
-    #include "createTimeControls.H"
+    //#include "createTimeControls.H"
     #include "initContinuityErrs.H"
 
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -88,11 +89,16 @@ int main(int argc, char *argv[])
 
     while (runTime.run())
     {
+        #include "readDyMControls.H"
+    
         #include "updateProperties.H"
 
         #include "readTimeControls.H"
         #include "CourantNo.H"
         #include "setDeltaT.H"
+        
+        // Update the mesh for topology change, mesh to mesh mapping
+        mesh.update();
 
         sources.update();
         
@@ -104,6 +110,27 @@ int main(int argc, char *argv[])
         
         while (pimple.loop() && fluidInDomain)
         {
+            if (pimple.firstPimpleIter() || pimple.moveMeshOuterCorrectors())
+            {
+                // Move the mesh
+                mesh.move();
+
+                if (mesh.changing())
+                {
+                    MRF.update();
+
+                    if (correctPhi)
+                    {
+                        //#include "correctPhi.H"
+                    }
+
+                    if (checkMeshCourantNo)
+                    {
+                        //#include "meshCourantNo.H"
+                    }
+                }
+            }
+            
             #include "pU/UEqn.H"
             #include "pU/pEqn.H"
         }
