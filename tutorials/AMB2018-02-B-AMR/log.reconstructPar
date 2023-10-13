@@ -1,0 +1,256 @@
+/*---------------------------------------------------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  11
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+Build  : 11-642b6a1f5c7b
+Exec   : reconstructPar
+Date   : Oct 13 2023
+Time   : 11:19:59
+Host   : "lap133367"
+PID    : 426010
+I/O    : uncollated
+Case   : /home/khk/OpenFOAM/additiveFoam-public/AdditiveFOAM/tutorials/AMB2018-02-B-AMR
+nProcs : 1
+sigFpe : Enabling floating point exception trapping (FOAM_SIGFPE).
+fileModificationChecking : Monitoring run-time modified files using timeStampMaster (fileModificationSkew 10)
+allowSystemOperations : Allowing user-supplied system call operations
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+Create time
+
+
+
+Reconstructing mesh region0
+
+Reconstructing meshes
+
+    Merging mesh 0 with 1
+    Merging mesh 2 with 3
+    Merging mesh 0 with 2
+
+Time = 0.0005s
+
+Reconstructing FV fields
+
+    Reconstructing volScalarFields
+
+        T
+        qDot
+        cellLevel
+
+    Reconstructing volVectorFields
+
+        U
+
+    Reconstructing surfaceScalarFields
+
+        phi
+
+Reconstructing point fields
+
+No point fields
+
+No lagrangian fields
+
+Time = 0.001s
+
+Reconstructing meshes
+
+    Merging mesh 0 with 1
+    Merging mesh 2 with 3
+    Merging mesh 0 with 2
+
+Reconstructing FV fields
+
+    Reconstructing volScalarFields
+
+        T
+        qDot
+        cellLevel
+
+    Reconstructing volVectorFields
+
+        U
+
+    Reconstructing surfaceScalarFields
+
+        phi
+
+Reconstructing point fields
+
+No point fields
+
+No lagrangian fields
+
+Time = 0.0015s
+
+Reconstructing meshes
+
+    Merging mesh 0 with 1
+    Merging mesh 2 with 3
+    Merging mesh 0 with 2
+
+Reconstructing FV fields
+
+    Reconstructing volScalarFields
+
+        T
+        qDot
+        cellLevel
+
+    Reconstructing volVectorFields
+
+        U
+
+    Reconstructing surfaceScalarFields
+
+        phi
+
+Reconstructing point fields
+
+No point fields
+
+No lagrangian fields
+
+Time = 0.002s
+
+Reconstructing meshes
+
+    Merging mesh 0 with 1
+    Merging mesh 2 with 3
+    Merging mesh 0 with 2
+
+Reconstructing FV fields
+
+    Reconstructing volScalarFields
+
+        T
+        qDot
+        cellLevel
+
+    Reconstructing volVectorFields
+
+        U
+
+    Reconstructing surfaceScalarFields
+
+        phi
+
+Reconstructing point fields
+
+No point fields
+
+No lagrangian fields
+
+Time = 0.0025s
+
+Reconstructing meshes
+
+    Merging mesh 0 with 1
+    Merging mesh 2 with 3
+    Merging mesh 0 with 2
+
+Reconstructing FV fields
+
+    Reconstructing volScalarFields
+
+        T
+        qDot
+        cellLevel
+
+    Reconstructing volVectorFields
+
+        U
+
+    Reconstructing surfaceScalarFields
+
+        phi
+
+Reconstructing point fields
+
+No point fields
+
+No lagrangian fields
+
+Time = 0.003s
+
+Reconstructing meshes
+
+    Merging mesh 0 with 1
+    Merging mesh 2 with 3
+    Merging mesh 0 with 2
+
+Reconstructing FV fields
+
+    Reconstructing volScalarFields
+
+        T
+        qDot
+        cellLevel
+
+    Reconstructing volVectorFields
+
+        U
+
+    Reconstructing surfaceScalarFields
+
+        phi
+
+Reconstructing point fields
+
+No point fields
+
+No lagrangian fields
+
+Time = 0.0035s
+
+Reconstructing FV fields
+
+    Reconstructing volScalarFields
+
+        T
+        qDot
+
+    Reconstructing volVectorFields
+
+        U
+
+    Reconstructing surfaceScalarFields
+
+        phi
+
+Reconstructing point fields
+
+No point fields
+
+No lagrangian fields
+
+Time = 0.004s
+
+Reconstructing FV fields
+
+    Reconstructing volScalarFields
+
+        T
+        qDot
+
+    Reconstructing volVectorFields
+
+        U
+
+    Reconstructing surfaceScalarFields
+
+        phi
+
+Reconstructing point fields
+
+No point fields
+
+No lagrangian fields
+
+
+End
+

@@ -17,15 +17,15 @@ FoamFile
 
 application     additiveFoam;
 
-startFrom       startTime;
+startFrom       latestTime;
 
 startTime       0;
 
 stopAt          endTime;
 
-endTime         0.002;
+endTime         0.004;
 
-deltaT          1e-7;
+deltaT          1e-6;
 
 writeControl    adjustableRunTime;
 
@@ -45,7 +45,7 @@ timePrecision   8;
 
 runTimeModifiable yes;
 
-adjustTimeStep  yes;
+adjustTimeStep  no;
 
 maxCo           0.5;
 maxFo           100;
