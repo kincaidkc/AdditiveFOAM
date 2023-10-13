@@ -1,0 +1,73 @@
+/*---------------------------------------------------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  10
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+Build  : 10-c4cf895ad8fa
+Exec   : blockMesh
+Date   : Oct 13 2023
+Time   : 11:22:25
+Host   : "lap133367"
+PID    : 426851
+I/O    : uncollated
+Case   : /home/khk/OpenFOAM/additiveFoam-public/AdditiveFOAM/tutorials/AMB2018-02-B
+nProcs : 1
+sigFpe : Enabling floating point exception trapping (FOAM_SIGFPE).
+fileModificationChecking : Monitoring run-time modified files using timeStampMaster (fileModificationSkew 10)
+allowSystemOperations : Allowing user-supplied system call operations
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+Create time
+
+Reading "blockMeshDict"
+
+Creating block mesh from
+    "system/blockMeshDict"
+Creating block edges
+No non-planar block faces defined
+Creating topology blocks
+Creating topology patches
+
+Creating block mesh topology
+
+Check topology
+
+	Basic statistics
+		Number of internal faces : 0
+		Number of boundary faces : 6
+		Number of defined boundary faces : 6
+		Number of undefined boundary faces : 0
+	Checking patch -> block consistency
+
+Creating block offsets
+Creating merge list .
+
+Creating polyMesh from blockMesh
+Creating patches
+Creating cells
+Creating points with scale 1
+    Block 0 cell size :
+        i : 1e-05 .. 1e-05
+        j : 1e-05
+        k : 1e-05 .. 1e-05
+
+Writing polyMesh
+----------------
+Mesh Information
+----------------
+  boundingBox: (-0.0005 -0.00025 -0.0003) (0.0025 0.00025 0)
+  nPoints: 475881
+  nCells: 450000
+  nFaces: 1375500
+  nInternalFaces: 1324500
+----------------
+Patches
+----------------
+  patch 0 (start: 1324500 size: 15000) name: bottom
+  patch 1 (start: 1339500 size: 15000) name: top
+  patch 2 (start: 1354500 size: 21000) name: sides
+
+End
+

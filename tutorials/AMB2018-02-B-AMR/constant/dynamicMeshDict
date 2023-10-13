@@ -23,11 +23,11 @@ topoChanger
     refineInterval  1;
 
     // Field to be refinement on
-    field           T;
+    field           qDot;
 
     // Refine field in between lower..upper
-    lowerRefineLevel 1000;
-    upperRefineLevel 2000;
+    lowerRefineLevel 1E+13;
+    upperRefineLevel 1E+20;
 
     // Have slower than 2:1 refinement
     nBufferLayers   1;
@@ -45,7 +45,7 @@ topoChanger
 
 distributor
 {
-    type            none;
+    type            distributor;
 
     libs            ("libfvMeshDistributors.so");
 
