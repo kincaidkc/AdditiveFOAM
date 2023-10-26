@@ -31,6 +31,8 @@ Description
     
 \*---------------------------------------------------------------------------*/
 
+#include "Timer.H"
+
 #include "pimpleControl.H"
 
 #include "Polynomial.H"
@@ -74,6 +76,8 @@ int main(int argc, char *argv[])
 
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
     
+    Timers timer(runTime);
+    
     // initialize time-stepping controls
     scalar FoNum = 0.0;
 
@@ -98,9 +102,13 @@ int main(int argc, char *argv[])
         #include "setDeltaT.H"
         
         // Update the mesh for topology change, mesh to mesh mapping
+        timer.start("Mesh Update");
         mesh.update();
+        timer.stop("Mesh Update");
 
+        timer.start("Heat Source");
         sources.update();
+        timer.stop("Heat Source");
         
         runTime++;
 
@@ -131,13 +139,19 @@ int main(int argc, char *argv[])
                 }
             }
             
+            timer.start("pUEqn");
             #include "pU/UEqn.H"
             #include "pU/pEqn.H"
+            timer.stop("pUEqn");
         }
 
+        timer.start("TEqn");
         #include "thermo/TEqn.H"
+        timer.stop("TEqn");
 
+        timer.start("ExaCA Update");
         ExaCA.update();
+        timer.stop("ExaCA Update");
 
         runTime.write();
 
@@ -151,7 +165,11 @@ int main(int argc, char *argv[])
             << nl << endl;
     }
 
+    timer.start("ExaCA Write");
     ExaCA.write();
+    timer.stop("ExaCA Write");
+    
+    timer.write();
 
     return 0;
 }
