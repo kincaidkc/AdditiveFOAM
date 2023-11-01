@@ -100,115 +100,22 @@ Foam::heatSourceModel::heatSourceModel
 
     transient_ = heatSourceModelCoeffs_.lookupOrDefault<Switch>("transient", false);
 
-    isoValue_ = heatSourceModelCoeffs_.lookupOrDefault<scalar>("isoValue", great);
+    if (transient_)
+    {
+        isoValue_ = heatSourceModelCoeffs_.lookup<scalar>("isoValue");
+    }
 
-    dx_ = heatSourceModelCoeffs_.lookupOrDefault<vector>("dx", vector::uniform(great));
+    dx_ = heatSourceModelCoeffs_.lookupOrDefault<vector>("dx", vector::one);
 }
 
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-void Foam::heatSourceModel::updateDimensions()
-{
-    if (!transient_ )
-    {
-        Info << "maxDepth: " << dimensions_.z() << endl;
-        return;
-    }
-
-    const vector position_ = movingBeam_->position();
-
-    const scalar searchRadius
-    (
-        max(staticDimensions_.x(), staticDimensions_.y())
-    );
-
-    // find maximum isotherm depth within supplied beam radius
-    // depth is defined as the z-distance from the heat source centre
-    const volScalarField& T = mesh_.lookupObject<volScalarField>("T");
-
-    const labelUList& owner = mesh_.owner();
-    const labelUList& neighbour = mesh_.neighbour();
-
-    const volVectorField& cc = mesh_.C();
-
-    scalar maxDepth = staticDimensions_.z();
-
-    // isocontour location evaluated linearly across faces
-    for(label facei=0; facei < mesh_.nInternalFaces(); facei++)
-    {        
-        const label own = owner[facei];
-        const label nei = neighbour[facei];
-
-        scalar minFace = min(T[own], T[nei]);
-        scalar maxFace = max(T[own], T[nei]);
-
-        if ((minFace < isoValue_) && (maxFace >= isoValue_))
-        {
-            vector d = cc[nei] - cc[own];
-            vector p = cc[own] + d*(isoValue_ - T[own])/(T[nei] - T[own]);
-            
-            p = cmptMag(p - position_);
-
-            scalar pxy = Foam::sqrt(p.x()*p.x() + p.y()*p.y());
-
-            if (pxy <= searchRadius)
-            {
-                maxDepth = max(p.z(), maxDepth);
-            }
-        }
-    }
-
-    // isocontour location evaluated linearly across processor faces
-    const volScalarField::Boundary& TBf = T.boundaryField();
-
-    forAll(TBf, patchi)
-    {   
-        const fvPatchScalarField& TPf = TBf[patchi];
-
-        const labelUList& faceCells = TPf.patch().faceCells();
-
-        if (TPf.coupled())
-        {
-            const vectorField ccn(cc.boundaryField()[patchi].patchNeighbourField());
-            const scalarField Tn(TPf.patchNeighbourField());
-
-            forAll(faceCells, facei)
-            {
-                label own = faceCells[facei];
-
-                scalar minFace = min(T[own], Tn[facei]);
-                scalar maxFace = max(T[own], Tn[facei]);
-
-                if ((minFace < isoValue_) && (maxFace >= isoValue_))
-                {
-                    vector d = ccn[facei] -  cc[own];
-                    vector p = cc[own] + d*(isoValue_ - T[own])/(Tn[facei] - T[own]);
-
-                    p = cmptMag(p - position_);
-
-                    scalar pxy = Foam::sqrt(p.x()*p.x() + p.y()*p.y());
-
-                    if (pxy <= searchRadius)
-                    {
-                        maxDepth = max(p.z(), maxDepth);
-                    }
-                }
-            }
-        }
-    }
-
-    reduce(maxDepth, maxOp<scalar>());
-
-    dimensions_ =
-        vector(staticDimensions_.x(), staticDimensions_.y(), maxDepth);
-
-    Info << "maxDepth: " << dimensions_.z() << endl;
-}
-
 Foam::tmp<Foam::volScalarField>
 Foam::heatSourceModel::qDot()
 {
+    hexMatcher hex;
+
     tmp<volScalarField> tqDot
     (
         new volScalarField
@@ -227,30 +134,16 @@ Foam::heatSourceModel::qDot()
     );
     volScalarField& qDot_ = tqDot.ref();
 
-    // sample gaussian distribution at desired resolution
     const scalar power_ = movingBeam_->power();
+    const vector position_ = movingBeam_->position();
 
     if (power_ > small)
     {
-        const vector position_ = movingBeam_->position();
-
-        // udpate the absorbtion coefficient using the heat source aspect ratio
-        const scalar aspectRatio = 
-            dimensions_.z() / min(dimensions_.x(), dimensions_.y());
-
-        dimensionedScalar absorbedPower
-        (
-            "etaP",
-            dimPower,
-            absorptionModel_->eta(aspectRatio)*power_
-        );
-
-        // calculate the weights of the distribution
-        volScalarField weights
+        volScalarField f
         (
             IOobject
             (
-                "weights",
+                "f",
                 mesh_.time().timeName(),
                 mesh_,
                 IOobject::NO_READ,
@@ -270,8 +163,6 @@ Foam::heatSourceModel::qDot()
             position_ + 3.0*dimensions_
         );
 
-        hexMatcher hex;
-
         forAll(mesh_.cells(), celli)
         {
             const cell& c = cells[celli];
@@ -290,7 +181,7 @@ Foam::heatSourceModel::qDot()
             if (cellBb.overlaps(beamBb))
             {
                 if (hex.isA(mesh_, celli))
-                {                  
+                {
                     labelVector nPoints
                     (
                         cmptDivide
@@ -307,7 +198,7 @@ Foam::heatSourceModel::qDot()
 
                     scalar dVi = dxi.x() * dxi.y() * dxi.z();
 
-                    scalar wi = 0.0;
+                    scalar fi = 0.0;
 
                     for (label k=0; k < nPoints.z(); ++k)
                     {
@@ -325,46 +216,32 @@ Foam::heatSourceModel::qDot()
                                     )
                                 );
 
-                                treeBoundBox ptBb(pt - 0.5*dxi, pt + 0.5*dxi);
+                                treeBoundBox ptBb(pt - 0.5*dxi, pt + +0.5*dxi);
 
                                 // calculate weight for point in beam bound box
                                 if (beamBb.overlaps(ptBb))
                                 {
                                     point d = cmptMag(pt - position_);
 
-                                    wi += weight(d) * dVi;
+                                    fi += factor(d) * dVi;
                                 }
                             }
                         }
                     }
 
-                    weights[celli] = wi / mesh_.V()[celli];
+                    f[celli] = fi / mesh_.V()[celli];
                 }
                 else
                 {
                     // cell is not hexahedral, evaluate at centre
                     point d = cmptMag(mesh_.cellCentres()[celli] - position_);
 
-                    weights[celli] = weight(d);
+                    f[celli] = factor(d);
                 }
             }
         }
 
-        qDot_ = absorbedPower * weights / V0();
-
-        // stabilize numerical integration errors within 95% of applied power
-        scalar integratedPower_ = fvc::domainIntegrate(qDot_).value();
-
-        scalar relTol
-        (
-            mag(integratedPower_ - absorbedPower.value())
-          / absorbedPower.value()
-        );
-
-        if (relTol < 0.05)
-        {
-            qDot_ *= absorbedPower.value() / integratedPower_;
-        }
+        qDot_ = I0() * f;
     }
 
     return tqDot;
