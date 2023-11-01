@@ -111,6 +111,105 @@ Foam::heatSourceModel::heatSourceModel
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
+void Foam::heatSourceModel::updateDimensions()
+{
+    if (!transient_ )
+    {
+        Info << "maxDepth: " << dimensions_.z() << endl;
+        return;
+    }
+
+    const vector position_ = movingBeam_->position();
+
+    const scalar searchRadius
+    (
+        max(staticDimensions_.x(), staticDimensions_.y())
+    );
+
+    // find maximum isotherm depth within supplied beam radius
+    // depth is defined as the z-distance from the heat source centre
+    const volScalarField& T = mesh_.lookupObject<volScalarField>("T");
+
+    const labelUList& owner = mesh_.owner();
+    const labelUList& neighbour = mesh_.neighbour();
+
+    const volVectorField& cc = mesh_.C();
+
+    scalar maxDepth = staticDimensions_.z();
+
+    // isocontour location evaluated linearly across faces
+    for(label facei=0; facei < mesh_.nInternalFaces(); facei++)
+    {        
+        const label own = owner[facei];
+        const label nei = neighbour[facei];
+
+        scalar minFace = min(T[own], T[nei]);
+        scalar maxFace = max(T[own], T[nei]);
+
+        if ((minFace < isoValue_) && (maxFace >= isoValue_))
+        {
+            vector d = cc[nei] - cc[own];
+            vector p = cc[own] + d*(isoValue_ - T[own])/(T[nei] - T[own]);
+            
+            p = cmptMag(p - position_);
+
+            scalar pxy = Foam::sqrt(p.x()*p.x() + p.y()*p.y());
+
+            if (pxy <= searchRadius)
+            {
+                maxDepth = max(p.z(), maxDepth);
+            }
+        }
+    }
+
+    // isocontour location evaluated linearly across processor faces
+    const volScalarField::Boundary& TBf = T.boundaryField();
+
+    forAll(TBf, patchi)
+    {   
+        const fvPatchScalarField& TPf = TBf[patchi];
+
+        const labelUList& faceCells = TPf.patch().faceCells();
+
+        if (TPf.coupled())
+        {
+            const vectorField ccn(cc.boundaryField()[patchi].patchNeighbourField());
+            const scalarField Tn(TPf.patchNeighbourField());
+
+            forAll(faceCells, facei)
+            {
+                label own = faceCells[facei];
+
+                scalar minFace = min(T[own], Tn[facei]);
+                scalar maxFace = max(T[own], Tn[facei]);
+
+                if ((minFace < isoValue_) && (maxFace >= isoValue_))
+                {
+                    vector d = ccn[facei] -  cc[own];
+                    vector p = cc[own] + d*(isoValue_ - T[own])/(Tn[facei] - T[own]);
+
+                    p = cmptMag(p - position_);
+
+                    scalar pxy = Foam::sqrt(p.x()*p.x() + p.y()*p.y());
+
+                    if (pxy <= searchRadius)
+                    {
+                        maxDepth = max(p.z(), maxDepth);
+                    }
+                }
+            }
+        }
+    }
+
+    reduce(maxDepth, maxOp<scalar>());
+
+    dimensions_ =
+        vector(staticDimensions_.x(), staticDimensions_.y(), maxDepth);
+
+    Info << "maxDepth: " << dimensions_.z() << endl;
+}
+
+
 Foam::tmp<Foam::volScalarField>
 Foam::heatSourceModel::qDot()
 {
