@@ -42,13 +42,19 @@ SourceFiles
 #include "volFields.H"
 #include "volPointInterpolation.H"
 <<<<<<< HEAD
+<<<<<<< HEAD
 #include "meshSearch.H"
 =======
+=======
+>>>>>>> ORNL-main
 #include "treeBoundBox.H"
 #include "OSspecific.H"
 #include "argList.H"
 #include "OFstream.H"
+<<<<<<< HEAD
 >>>>>>> 1b14ea8 (OF11 changes pt 1)
+=======
+>>>>>>> ORNL-main
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -73,7 +79,7 @@ private:
         const volScalarField& T_;
 
         //volPointInterpolation vpi_;
-        
+
         mutable pointScalarField Tp_;
 
         List<DynamicList<label>> pointsInCell;
