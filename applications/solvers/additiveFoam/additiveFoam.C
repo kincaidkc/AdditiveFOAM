@@ -158,6 +158,7 @@ int main(int argc, char *argv[])
         if (runTime.writeTime())
         {
             sources.qDot().write();
+            sources.refinementField().write();
         }
 
         Info<< "ExecutionTime = " << runTime.elapsedCpuTime() << " s"

@@ -197,7 +197,7 @@ public:
         virtual dimensionedScalar V0() = 0;
         
         //- Return the D2sigma beam half radius
-        virtual dimensionedScalar D2sigma() = 0;
+        virtual scalar D2sigma() = 0;
 
         //- Read the heat source dictionary
         virtual bool read() = 0;

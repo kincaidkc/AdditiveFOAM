@@ -98,7 +98,10 @@ Foam::movingHeatSourceModel::movingHeatSourceModel
     }
     
     if(refine_)
+    {
         nSteps_ = dict_.lookup<int>("nSteps");
+        currStep_ = nSteps_ - 1;
+    }
 }
 
 // * * * * * * * * * * * * * * * Destructors * * * * * * * * * * * * * * * * //
@@ -187,9 +190,9 @@ void Foam::movingHeatSourceModel::update()
                 vector currPos = Zero;
                 scalar currPow = 0.0;
                 
-                for(int i = 0; i < nSteps_; ++i)
+                for(int j = 0; j < nSteps_; ++j)
                 {
-                    currTime += i * currDt;
+                    currTime += j * currDt;
                     
                     sources_[i].beam().move(currPos, currPow, currTime);
                     
@@ -197,11 +200,17 @@ void Foam::movingHeatSourceModel::update()
                     Info << "Current power: " << currPow << endl;
                     
                     refinementField_
-                        += pos0(sources_[i].D2sigma().value() - mag(mesh_.C() - currPos));
+                        += pos0(dimensionedScalar(dimLength, sources_[i].D2sigma())
+                           - mag(mesh_.C() - dimensionedVector(dimLength, currPos)));
+                        
+                    Info << "Added refinement info from beam: " << sourceNames_[i] << endl;
                 }
             }
         }
     }
+    
+    //- Rescale refinement field to be 1 or 0
+    refinementField_ = pos(refinementField_);
     
     if (currStep_ == nSteps_)
         currStep_ = 0;

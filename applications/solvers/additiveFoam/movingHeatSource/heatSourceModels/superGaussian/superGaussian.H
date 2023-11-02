@@ -90,7 +90,7 @@ public:
 
         inline virtual dimensionedScalar V0();
         
-        inline virtual dimensionedScalar D2sigma();
+        inline virtual scalar D2sigma();
 
         //- Read the heatSourceProperties dictionary
         virtual bool read();

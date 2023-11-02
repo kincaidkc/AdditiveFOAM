@@ -104,6 +104,12 @@ public:
             return qDot_;
         }
         
+        //- Return const access to the refinement field
+        const volScalarField& refinementField() const
+        {
+            return refinementField_;
+        }
+        
         //- Adjust deltaT using the current state of each beam
         void adjustDeltaT(scalar& deltaT);
         

@@ -103,16 +103,10 @@ Foam::heatSourceModels::modifiedSuperGaussian::V0()
 }
 
 
-inline Foam::dimensionedScalar
+inline Foam::scalar
 Foam::heatSourceModels::modifiedSuperGaussian::D2sigma()
 {
-    const dimensionedScalar D2sigma
-    (
-        dimLength,
-        mag(dimensions_)
-    );
-    
-    return D2sigma;
+    return max(dimensions_.x(), dimensions_.y());
 }
 
 
