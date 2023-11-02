@@ -222,7 +222,7 @@ void Foam::movingHeatSourceModel::update()
                 scalar currPow = 0.0;
                 
                 //- Integrate forward ahead of the beam
-                for(int j = 0; j < nSteps_; ++j)
+                for(int j = 0; j < 2 * nSteps_ + 5; ++j)
                 {
                     scalar nowTime = currTime + j * currDt;
                     
@@ -234,7 +234,7 @@ void Foam::movingHeatSourceModel::update()
                 }
                 
                 //- Integrate behind the beam to capture the tail
-                for(int j = 0; j < nRevSteps_ + 5; ++j)
+                for(int j = 0; j < nRevSteps_; ++j)
                 {
                     scalar nowTime = currTime - j * currDt;
                     

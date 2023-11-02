@@ -19,7 +19,7 @@ sources (beam);
 
 refine  true;
 
-nSteps  80;
+nSteps  40;
 
 nRevSteps   40;
 
