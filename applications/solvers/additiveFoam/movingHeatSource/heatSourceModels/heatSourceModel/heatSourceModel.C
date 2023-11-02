@@ -28,6 +28,7 @@ License
 #include "heatSourceModel.H"
 #include "labelVector.H"
 #include "hexMatcher.H"
+#include "treeBoundBox.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -100,12 +101,9 @@ Foam::heatSourceModel::heatSourceModel
 
     transient_ = heatSourceModelCoeffs_.lookupOrDefault<Switch>("transient", false);
 
-    if (transient_)
-    {
-        isoValue_ = heatSourceModelCoeffs_.lookup<scalar>("isoValue");
-    }
+    isoValue_ = heatSourceModelCoeffs_.lookupOrDefault<scalar>("isoValue", great);
 
-    dx_ = heatSourceModelCoeffs_.lookupOrDefault<vector>("dx", vector::one);
+    dx_ = heatSourceModelCoeffs_.lookupOrDefault<vector>("dx", vector::uniform(great));
 }
 
 

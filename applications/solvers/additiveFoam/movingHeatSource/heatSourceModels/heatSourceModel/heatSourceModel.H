@@ -42,7 +42,6 @@ SourceFiles
 #include "movingBeam.H"
 #include "absorptionModel.H"
 #include "labelVector.H"
-#include "treeBoundBox.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
