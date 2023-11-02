@@ -17,6 +17,12 @@ FoamFile
 
 sources (beam);
 
+refine  true;
+
+nSteps  80;
+
+nRevSteps   40;
+
 beam
 {
     pathName            scanPath;    

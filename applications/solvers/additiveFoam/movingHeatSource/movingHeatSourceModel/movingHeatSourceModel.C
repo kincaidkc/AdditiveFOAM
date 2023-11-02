@@ -50,8 +50,11 @@ Foam::movingHeatSourceModel::movingHeatSourceModel
     ),
     sourceNames_(dict_.lookup("sources")),
     refine_(dict_.lookupOrDefault<bool>("refine", false)),
+    resolveTail_(dict_.lookupOrDefault<bool>("resolveTail", false)),
     nSteps_(0),
+    nRevSteps_(0),
     currStep_(0),
+    nextRefinement_(0),
     qDot_
     (
         IOobject
@@ -100,6 +103,7 @@ Foam::movingHeatSourceModel::movingHeatSourceModel
     if(refine_)
     {
         nSteps_ = dict_.lookup<int>("nSteps");
+        nRevSteps_ = dict_.lookup<int>("nRevSteps");
         currStep_ = nSteps_ - 1;
     }
 }
@@ -110,6 +114,23 @@ Foam::movingHeatSourceModel::~movingHeatSourceModel()
 {}
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
+
+bool Foam::movingHeatSourceModel::refineTime()
+{
+    if(mesh_.time().timeIndex() == nextRefinement_)
+    {
+        Info << "IT'S REFINE TIME" << endl;
+        
+        nextRefinement_ += nSteps_;
+        
+        return true;
+    }
+    
+    else
+    {
+        return false;
+    }
+}
 
 void Foam::movingHeatSourceModel::adjustDeltaT(scalar& deltaT)
 {
@@ -126,9 +147,25 @@ void Foam::movingHeatSourceModel::update()
     
     ++currStep_;
     
+    const volScalarField& alpha1
+        = mesh_.lookupObject<volScalarField>("alpha.solid");
+    
     //- Reset refinement field after desired interval
     if (currStep_ == nSteps_)
-        refinementField_ = dimensionedScalar(refinementField_.dimensions(), 0.0);
+    {
+        if (resolveTail_)
+        {
+            //- Reset to capture melt pool tail
+            refinementField_ = pos(1.0 - alpha1);
+        }
+        
+        else
+        {
+            //- Reset to zero
+            refinementField_
+                = dimensionedScalar(refinementField_.dimensions(), 0.0);
+        }
+    }
     
     //- Subcycle each moving heat source in time and combine into a single field
     forAll(sources_, i)
@@ -178,32 +215,37 @@ void Foam::movingHeatSourceModel::update()
             
             if((refine_) && (currStep_ == nSteps_))
             {
-                //- Set refinement around melt pool
-                const volScalarField& alpha1
-                    = mesh_.lookupObject<volScalarField>("alpha.solid");
-                
-                refinementField_ = pos(1.0 - alpha1);
-                
                 //- Add refinement around individual beam position for next n timesteps
                 scalar currTime = mesh_.time().value();
                 scalar currDt = mesh_.time().deltaT().value();
                 vector currPos = Zero;
                 scalar currPow = 0.0;
                 
+                //- Integrate forward ahead of the beam
                 for(int j = 0; j < nSteps_; ++j)
                 {
-                    currTime += j * currDt;
+                    scalar nowTime = currTime + j * currDt;
                     
-                    sources_[i].beam().move(currPos, currPow, currTime);
-                    
-                    Info << "Current position: " << currPos << endl;
-                    Info << "Current power: " << currPow << endl;
+                    sources_[i].beam().move(currPos, currPow, nowTime);
                     
                     refinementField_
                         += pos0(dimensionedScalar(dimLength, sources_[i].D2sigma())
                            - mag(mesh_.C() - dimensionedVector(dimLength, currPos)));
-                        
-                    Info << "Added refinement info from beam: " << sourceNames_[i] << endl;
+                }
+                
+                //- Integrate behind the beam to capture the tail
+                for(int j = 0; j < nRevSteps_ + 5; ++j)
+                {
+                    scalar nowTime = currTime - j * currDt;
+                    
+                    if (nowTime < 0.0)
+                        break;
+                    
+                    sources_[i].beam().move(currPos, currPow, nowTime);
+                    
+                    refinementField_
+                        += pos0(dimensionedScalar(dimLength, sources_[i].D2sigma())
+                           - mag(mesh_.C() - dimensionedVector(dimLength, currPos)));
                 }
             }
         }

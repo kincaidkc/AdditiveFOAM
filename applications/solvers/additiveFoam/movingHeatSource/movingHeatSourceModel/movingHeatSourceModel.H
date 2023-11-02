@@ -68,11 +68,20 @@ private:
         //- Create refinement field bool
         bool refine_;
         
+        //- Use alpha to resolve tail?
+        bool resolveTail_;
+        
         //- Refinement field interval
         int nSteps_;
         
+        //- Refinement steps in beam wake
+        int nRevSteps_;
+        
         //- Refinement field interval counter
         int currStep_;
+        
+        //- Next refinement index
+        int nextRefinement_;
         
         //- Total volumetric power of all beams
         volScalarField qDot_;
@@ -109,6 +118,8 @@ public:
         {
             return refinementField_;
         }
+        
+        bool refineTime();
         
         //- Adjust deltaT using the current state of each beam
         void adjustDeltaT(scalar& deltaT);

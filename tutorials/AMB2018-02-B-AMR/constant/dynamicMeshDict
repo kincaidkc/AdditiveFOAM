@@ -20,14 +20,14 @@ topoChanger
     libs    ("libfvMeshTopoChangers.so");
 
     // How often to refine
-    refineInterval  1;
+    refineInterval  20;
 
     // Field to be refinement on
-    field           qDot;
+    field           refinementField;
 
     // Refine field in between lower..upper
-    lowerRefineLevel 1E+13;
-    upperRefineLevel 1E+20;
+    lowerRefineLevel 0.5;
+    upperRefineLevel 1E+3;
 
     // Have slower than 2:1 refinement
     nBufferLayers   1;

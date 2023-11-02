@@ -101,14 +101,18 @@ int main(int argc, char *argv[])
         #include "CourantNo.H"
         #include "setDeltaT.H"
         
-        // Update the mesh for topology change, mesh to mesh mapping
-        timer.start("Mesh Update");
-        mesh.update();
-        timer.stop("Mesh Update");
-
+        //- Update the moving heat source model
         timer.start("Heat Source");
         sources.update();
         timer.stop("Heat Source");
+        
+        // Update the mesh for topology change, mesh to mesh mapping
+        timer.start("Mesh Update");
+        //if(sources.refineTime())
+        //{
+            mesh.update();
+        //}
+        timer.stop("Mesh Update");
         
         runTime++;
 
