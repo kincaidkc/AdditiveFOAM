@@ -174,7 +174,17 @@ public:
         bool activePath();
         
         //- Move the beam to the provided time
-        void move(const scalar time);
+        void move
+        (
+            vector& position,
+            scalar& power,
+            const scalar time
+        );
+        
+        void move
+        (
+            const scalar time
+        );
         
         //- Returns the path index at the provided time
         label findIndex(const scalar time);

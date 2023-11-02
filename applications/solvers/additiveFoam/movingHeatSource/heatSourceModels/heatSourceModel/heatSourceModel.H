@@ -190,9 +190,14 @@ public:
         //- Return the volumetric heating field
         virtual tmp<volScalarField> qDot();
 
-        virtual scalar factor(const vector& d) = 0;
+        //- Return the weight of the heat source distribution at a given point
+        virtual scalar weight(const vector& d) = 0;
 
-        virtual dimensionedScalar I0() = 0;
+        //- Return the normalization volume for the integrated distribution
+        virtual dimensionedScalar V0() = 0;
+        
+        //- Return the D2sigma beam half radius
+        virtual dimensionedScalar D2sigma() = 0;
 
         //- Read the heat source dictionary
         virtual bool read() = 0;

@@ -154,7 +154,54 @@ bool Foam::movingBeam::activePath()
 }
 
 
-void Foam::movingBeam::move(const scalar time)
+void Foam::movingBeam::move
+(
+    vector& position, 
+    scalar& power,
+    const scalar time
+)
+{
+    // update the current index of the path
+    index_ = findIndex(time);
+
+    const label i = index_;
+
+    // update the beam center
+    if (path_[i].mode() == 1)
+    {
+        position = path_[i].position();
+    }
+    else
+    {
+        vector displacement = vector::zero;
+
+        scalar dt = path_[i].time() - path_[i-1].time();
+
+        if (dt > 0)
+        {
+            const vector dx = path_[i].position() - path_[i-1].position();
+            displacement = dx*(time - path_[i-1].time())/dt;
+        }
+
+        position = path_[i-1].position() + displacement;
+    }
+
+    // update the beam power
+    if ((time - path_[i-1].time()) > eps)
+    {
+        power = path_[i].power();
+    }
+    else
+    {
+        power = path_[i-1].power();
+    }
+}
+
+
+void Foam::movingBeam::move
+(
+    const scalar time
+)
 {
     // update the current index of the path
     index_ = findIndex(time);

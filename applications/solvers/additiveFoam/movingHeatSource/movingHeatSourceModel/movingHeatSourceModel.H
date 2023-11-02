@@ -65,8 +65,20 @@ private:
         //- List of individual heat sources
         wordList sourceNames_;
         
+        //- Create refinement field bool
+        bool refine_;
+        
+        //- Refinement field interval
+        int nSteps_;
+        
+        //- Refinement field interval counter
+        int currStep_;
+        
         //- Total volumetric power of all beams
         volScalarField qDot_;
+        
+        //- Refinement field
+        volScalarField refinementField_;
                 
         //- Pointer list to each beam instance
         PtrList<heatSourceModel> sources_;

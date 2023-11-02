@@ -62,7 +62,7 @@ Foam::heatSourceModels::superGaussian::superGaussian
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
 inline Foam::scalar
-Foam::heatSourceModels::superGaussian::factor(const vector& d)
+Foam::heatSourceModels::superGaussian::weight(const vector& d)
 {
     vector s = dimensions_ / Foam::pow(2.0, 1.0/k_);
 
@@ -71,42 +71,6 @@ Foam::heatSourceModels::superGaussian::factor(const vector& d)
     return Foam::exp(-x);
 }
 
-inline Foam::dimensionedScalar
-Foam::heatSourceModels::superGaussian::I0()
-{
-    const scalar power_ = movingBeam_->power();
-
-    const scalar AR = 
-        dimensions_.z() / min(dimensions_.x(), dimensions_.y());
-    
-    const scalar eta_ = absorptionModel_->eta(AR);
-
-    vector s = dimensions_ / Foam::pow(2.0, 1.0/k_);
-
-    const dimensionedScalar I0
-    (
-        "I0",
-        dimPower / dimVolume,
-        eta_*power_*k_
-      / (s.x()*s.y()*s.z()*2.0*pi*Foam::tgamma(3.0/k_))
-    );
-
-    return I0;
-}
-
-
-
-/*
-Foam::tmp<Foam::volScalarField>
-Foam::heatSourceModels::superGaussian::qDot()
-const
-{
-    vector s = dimensions_ / Foam::pow(2.0, 1.0/k_);
-
-    scalar x = Foam::pow(magSqr(cmptDivide(d, s)), k_/2.0);
-
-    return Foam::exp(-x);
-}
 
 inline Foam::dimensionedScalar
 Foam::heatSourceModels::superGaussian::V0()
@@ -120,125 +84,22 @@ Foam::heatSourceModels::superGaussian::V0()
         (2.0 / 3.0)*s.x()*s.y()*s.z()*pi*Foam::tgamma(1.0 + 3.0/k_)
     );
 
-    const scalar power_ = movingBeam_->power();
-    
-    if (power_ > small)
-    {        
-        const scalar AR = 
-            dimensions_.z() / min(dimensions_.x(), dimensions_.y());
-        
-        const scalar eta_ = absorptionModel_->eta(AR);
-        
-        //- Calculate volumetric intesity
-        const vector s = dimensions_ / Foam::pow(2.0, 1.0/k_);
-
-        const dimensionedScalar I0
-        (
-            "I0",
-            dimPower / dimVolume,
-            eta_*power_*k_
-          / (s.x()*s.y()*s.z()*2.0*pi*Foam::tgamma(3.0/k_))
-        );
-
-        // change sampling location for gaussian
-        volScalarField factor
-        (
-            IOobject
-            (
-                "factor",
-                mesh_.time().timeName(),
-                mesh_,
-                IOobject::NO_READ,
-                IOobject::NO_WRITE
-            ),
-            mesh_,
-            dimensionedScalar("Zero", dimless, 0.0)          
-        );
-
-        vector dx = vector(5e-6,  5e-6, 5e-6);
-
-        const cellList& cells = mesh_.cells();
-        const faceList& faces = mesh_.faces();
-        const pointField& points = mesh_.points();
-
-        forAll(mesh_.cells(), celli)
-        {
-            treeBoundBox beamBb
-            (
-                movingBeam_->position() - 3.0*dimensions_,
-                movingBeam_->position() + 3.0*dimensions_
-            );
-
-            const cell& c = cells[celli];
-
-            treeBoundBox cellBb(point::max, point::min);
-            forAll(c, facei)
-            {
-                const face& f = faces[c[facei]];
-                forAll(f, fp)
-                {
-                    cellBb.min() = min(cellBb.min(), points[f[fp]]);
-                    cellBb.max() = max(cellBb.max(), points[f[fp]]);
-                }
-            }
-
-            if (cellBb.overlaps(beamBb))
-            {
-                labelVector nPoints
-                (
-                    cmptDivide
-                    (
-                        (cellBb.span() + small*vector::one),
-                        dx
-                    )
-                );
-
-                nPoints = max(nPoints, labelVector(1, 1, 1));
-
-                vector dxi = cmptDivide(cellBb.span(), vector(nPoints));
-
-                scalar dVi = dxi.x() * dxi.y() * dxi.z();
-
-                scalar Vi = 0;
-
-                for (label k=0; k < nPoints.z(); ++k)
-                {
-                    for (label j=0; j < nPoints.y(); ++j)
-                    {
-                        for (label i=0; i < nPoints.x(); ++i)
-                        {
-                            const point pt
-                            (
-                                cellBb.max()
-                              - cmptMultiply
-                                (
-                                    vector(i + 0.5, j + 0.5, k + 0.5),
-                                    dxi
-                                )
-                            );
-
-                            point d = cmptMag(pt - movingBeam_->position());
-
-                            scalar f = magSqr(cmptDivide(d, s));
-
-                            factor[celli] += 
-                                Foam::exp(-Foam::pow(f, k_/2.0)) * dVi;
-
-                            Vi += dVi;
-                        }
-                    }
-                }
-
-                factor[celli] /= Vi;
-            }
-        }
-
-        qDot_ = I0 * factor;
-    }
-
-    return tqDot;
+    return V0;
 }
-*/
+
+
+inline Foam::dimensionedScalar
+Foam::heatSourceModels::superGaussian::D2sigma()
+{
+    const dimensionedScalar D2sigma
+    (
+        dimLength,
+        mag(dimensions_)
+    );
+    
+    return D2sigma;
+}
+
 
 bool Foam::heatSourceModels::superGaussian::read()
 {

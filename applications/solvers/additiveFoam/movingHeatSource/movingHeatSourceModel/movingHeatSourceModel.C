@@ -49,6 +49,9 @@ Foam::movingHeatSourceModel::movingHeatSourceModel
         )
     ),
     sourceNames_(dict_.lookup("sources")),
+    refine_(dict_.lookupOrDefault<bool>("refine", false)),
+    nSteps_(0),
+    currStep_(0),
     qDot_
     (
         IOobject
@@ -61,7 +64,20 @@ Foam::movingHeatSourceModel::movingHeatSourceModel
         ),
         mesh_,
         dimensionedScalar(dimPower/dimVolume, 0.0)
-    )    
+    ),
+    refinementField_
+    (
+    	IOobject
+    	(
+    	    "refinementField",
+    	    mesh_.time().timeName(),
+    	    mesh_,
+    	    IOobject::READ_IF_PRESENT,
+    	    IOobject::NO_WRITE
+    	),
+    	mesh_,
+    	dimensionedScalar(dimless, 0.0)
+    )  
 {
     sources_.resize(sourceNames_.size());
         
@@ -80,6 +96,9 @@ Foam::movingHeatSourceModel::movingHeatSourceModel
             ).ptr()
         );
     }
+    
+    if(refine_)
+        nSteps_ = dict_.lookup<int>("nSteps");
 }
 
 // * * * * * * * * * * * * * * * Destructors * * * * * * * * * * * * * * * * //
@@ -99,9 +118,16 @@ void Foam::movingHeatSourceModel::adjustDeltaT(scalar& deltaT)
 
 void Foam::movingHeatSourceModel::update()
 {
-    //- Subcycle each moving heat source in time and combine into a single field
+    //- Reset qDot field at every time step
     qDot_ = dimensionedScalar("Zero", qDot_.dimensions(), 0.0);
     
+    ++currStep_;
+    
+    //- Reset refinement field after desired interval
+    if (currStep_ == nSteps_)
+        refinementField_ = dimensionedScalar(refinementField_.dimensions(), 0.0);
+    
+    //- Subcycle each moving heat source in time and combine into a single field
     forAll(sources_, i)
     {
         if (sources_[i].beam().activePath())
@@ -115,6 +141,7 @@ void Foam::movingHeatSourceModel::update()
 
             const scalar beam_dt = sources_[i].beam().deltaT();
 
+            //- Update individual beam heat source contribution
             volScalarField qDoti
             (
                 IOobject
@@ -145,8 +172,39 @@ void Foam::movingHeatSourceModel::update()
             qDoti /= sumWeights;
             
             qDot_ += qDoti;
+            
+            if((refine_) && (currStep_ == nSteps_))
+            {
+                //- Set refinement around melt pool
+                const volScalarField& alpha1
+                    = mesh_.lookupObject<volScalarField>("alpha.solid");
+                
+                refinementField_ = pos(1.0 - alpha1);
+                
+                //- Add refinement around individual beam position for next n timesteps
+                scalar currTime = mesh_.time().value();
+                scalar currDt = mesh_.time().deltaT().value();
+                vector currPos = Zero;
+                scalar currPow = 0.0;
+                
+                for(int i = 0; i < nSteps_; ++i)
+                {
+                    currTime += i * currDt;
+                    
+                    sources_[i].beam().move(currPos, currPow, currTime);
+                    
+                    Info << "Current position: " << currPos << endl;
+                    Info << "Current power: " << currPow << endl;
+                    
+                    refinementField_
+                        += pos0(sources_[i].D2sigma().value() - mag(mesh_.C() - currPos));
+                }
+            }
         }
     }
+    
+    if (currStep_ == nSteps_)
+        currStep_ = 0;
 }
 
 // ************************************************************************* //

@@ -102,6 +102,20 @@ Foam::heatSourceModels::modifiedSuperGaussian::V0()
     return V0;
 }
 
+
+inline Foam::dimensionedScalar
+Foam::heatSourceModels::modifiedSuperGaussian::D2sigma()
+{
+    const dimensionedScalar D2sigma
+    (
+        dimLength,
+        mag(dimensions_)
+    );
+    
+    return D2sigma;
+}
+
+
 bool Foam::heatSourceModels::modifiedSuperGaussian::read()
 {
     if (heatSourceModel::read())

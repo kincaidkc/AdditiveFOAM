@@ -213,8 +213,6 @@ void Foam::heatSourceModel::updateDimensions()
 Foam::tmp<Foam::volScalarField>
 Foam::heatSourceModel::qDot()
 {
-    hexMatcher hex;
-
     tmp<volScalarField> tqDot
     (
         new volScalarField
@@ -233,16 +231,30 @@ Foam::heatSourceModel::qDot()
     );
     volScalarField& qDot_ = tqDot.ref();
 
+    // sample gaussian distribution at desired resolution
     const scalar power_ = movingBeam_->power();
-    const vector position_ = movingBeam_->position();
 
     if (power_ > small)
     {
-        volScalarField f
+        const vector position_ = movingBeam_->position();
+
+        // udpate the absorbtion coefficient using the heat source aspect ratio
+        const scalar aspectRatio = 
+            dimensions_.z() / min(dimensions_.x(), dimensions_.y());
+
+        dimensionedScalar absorbedPower
+        (
+            "etaP",
+            dimPower,
+            absorptionModel_->eta(aspectRatio)*power_
+        );
+
+        // calculate the weights of the distribution
+        volScalarField weights
         (
             IOobject
             (
-                "f",
+                "weights",
                 mesh_.time().timeName(),
                 mesh_,
                 IOobject::NO_READ,
@@ -262,6 +274,8 @@ Foam::heatSourceModel::qDot()
             position_ + 3.0*dimensions_
         );
 
+        hexMatcher hex;
+
         forAll(mesh_.cells(), celli)
         {
             const cell& c = cells[celli];
@@ -280,7 +294,7 @@ Foam::heatSourceModel::qDot()
             if (cellBb.overlaps(beamBb))
             {
                 if (hex.isA(mesh_, celli))
-                {
+                {                  
                     labelVector nPoints
                     (
                         cmptDivide
@@ -297,7 +311,7 @@ Foam::heatSourceModel::qDot()
 
                     scalar dVi = dxi.x() * dxi.y() * dxi.z();
 
-                    scalar fi = 0.0;
+                    scalar wi = 0.0;
 
                     for (label k=0; k < nPoints.z(); ++k)
                     {
@@ -315,32 +329,46 @@ Foam::heatSourceModel::qDot()
                                     )
                                 );
 
-                                treeBoundBox ptBb(pt - 0.5*dxi, pt + +0.5*dxi);
+                                treeBoundBox ptBb(pt - 0.5*dxi, pt + 0.5*dxi);
 
                                 // calculate weight for point in beam bound box
                                 if (beamBb.overlaps(ptBb))
                                 {
                                     point d = cmptMag(pt - position_);
 
-                                    fi += factor(d) * dVi;
+                                    wi += weight(d) * dVi;
                                 }
                             }
                         }
                     }
 
-                    f[celli] = fi / mesh_.V()[celli];
+                    weights[celli] = wi / mesh_.V()[celli];
                 }
                 else
                 {
                     // cell is not hexahedral, evaluate at centre
                     point d = cmptMag(mesh_.cellCentres()[celli] - position_);
 
-                    f[celli] = factor(d);
+                    weights[celli] = weight(d);
                 }
             }
         }
 
-        qDot_ = I0() * f;
+        qDot_ = absorbedPower * weights / V0();
+
+        // stabilize numerical integration errors within 95% of applied power
+        scalar integratedPower_ = fvc::domainIntegrate(qDot_).value();
+
+        scalar relTol
+        (
+            mag(integratedPower_ - absorbedPower.value())
+          / absorbedPower.value()
+        );
+
+        if (relTol < 0.05)
+        {
+            qDot_ *= absorbedPower.value() / integratedPower_;
+        }
     }
 
     return tqDot;

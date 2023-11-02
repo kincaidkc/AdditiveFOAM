@@ -86,9 +86,11 @@ public:
 
     // Member Functions
 
-        inline virtual scalar factor(const vector& d);
+        inline virtual scalar weight(const vector& d);
 
-        inline virtual dimensionedScalar I0();
+        inline virtual dimensionedScalar V0();
+        
+        inline virtual dimensionedScalar D2sigma();
 
         //- Read the heatSourceProperties dictionary
         virtual bool read();
