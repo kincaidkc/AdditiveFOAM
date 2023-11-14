@@ -186,6 +186,11 @@ public:
             const scalar time
         );
         
+        scalar velocity
+        (
+            const scalar time
+        );
+        
         //- Returns the path index at the provided time
         label findIndex(const scalar time);
 

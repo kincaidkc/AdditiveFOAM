@@ -53,6 +53,8 @@ Foam::movingHeatSourceModel::movingHeatSourceModel
     resolveTail_(dict_.lookupOrDefault<bool>("resolveTail", false)),
     nSteps_(0),
     nRevSteps_(0),
+    nRefine_(0),
+    rRefine_(0),
     currStep_(0),
     nextRefinement_(0),
     qDot_
@@ -100,10 +102,14 @@ Foam::movingHeatSourceModel::movingHeatSourceModel
         );
     }
     
+    Info << "reading refine fields" << endl;
+    
     if(refine_)
     {
         nSteps_ = dict_.lookup<int>("nSteps");
         nRevSteps_ = dict_.lookup<int>("nRevSteps");
+        nRefine_ = dict_.lookupOrDefault<int>("nRefine", 1);
+        rRefine_ = dict_.lookupOrDefault<int>("rRefine", 1);
         currStep_ = nSteps_ - 1;
     }
 }
@@ -122,6 +128,13 @@ bool Foam::movingHeatSourceModel::refineTime()
         Info << "IT'S REFINE TIME" << endl;
         
         nextRefinement_ += nSteps_;
+        
+        return true;
+    }
+    
+    else if (mesh_.time().timeIndex() <= nextRefinement_ - nSteps_ + nRefine_)
+    {
+        Info << "Re-refining mesh..." << endl;
         
         return true;
     }
@@ -220,9 +233,9 @@ void Foam::movingHeatSourceModel::update()
                 scalar currDt = mesh_.time().deltaT().value();
                 vector currPos = Zero;
                 scalar currPow = 0.0;
-                
+
                 //- Integrate forward ahead of the beam
-                for(int j = 0; j < 2 * nSteps_ + 5; ++j)
+                for(int j = 0; j < nSteps_ * rRefine_ + 5; ++j)
                 {
                     scalar nowTime = currTime + j * currDt;
                     

@@ -77,6 +77,12 @@ private:
         //- Refinement steps in beam wake
         int nRevSteps_;
         
+        //- Number of refinements to make after certain interval
+        int nRefine_;
+        
+        //- How many steps times nSteps ahead to refine
+        int rRefine_;
+        
         //- Refinement field interval counter
         int currStep_;
         

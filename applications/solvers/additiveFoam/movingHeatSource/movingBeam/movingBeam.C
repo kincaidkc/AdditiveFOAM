@@ -240,6 +240,29 @@ void Foam::movingBeam::move
 }
 
 
+Foam::scalar
+Foam::movingBeam::velocity
+(
+    const scalar time
+)
+{
+    // update the current index of the path
+    index_ = findIndex(time);
+    
+    const label i = index_;
+    
+    if (path_[i].mode() == 1)
+    {
+        return 0.0;
+    }
+    
+    else
+    {
+        return path_[i].parameter();
+    }
+}
+
+
 Foam::label
 Foam::movingBeam::findIndex(const scalar time)
 {
