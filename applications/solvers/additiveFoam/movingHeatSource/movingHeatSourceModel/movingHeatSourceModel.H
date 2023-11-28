@@ -72,22 +72,18 @@ private:
         bool resolveTail_;
         
         //- Refinement field interval
-        int nSteps_;
+        label nSteps_;
         
         //- Refinement steps in beam wake
-        int nRevSteps_;
+        label nRevSteps_;
         
-        //- Number of refinements to make after certain interval
-        int nRefine_;
-        
-        //- How many steps times nSteps ahead to refine
-        int rRefine_;
-        
+        label nRefineSteps_;
+
         //- Refinement field interval counter
-        int currStep_;
+        label currStep_;
         
         //- Next refinement index
-        int nextRefinement_;
+        label nextRefinement_;
         
         //- Total volumetric power of all beams
         volScalarField qDot_;

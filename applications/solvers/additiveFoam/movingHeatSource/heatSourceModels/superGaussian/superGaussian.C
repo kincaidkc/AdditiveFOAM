@@ -53,6 +53,7 @@ Foam::heatSourceModels::superGaussian::superGaussian
     heatSourceModel(typeName, sourceName, dict, mesh),
     mesh_(mesh)
 {
+    Info << "supergaussian constructor" << endl;
     k_ = heatSourceModelCoeffs_.lookup<scalar>("k");
 }
 

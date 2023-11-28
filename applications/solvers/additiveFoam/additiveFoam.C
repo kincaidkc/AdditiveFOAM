@@ -108,10 +108,10 @@ int main(int argc, char *argv[])
         
         // Update the mesh for topology change, mesh to mesh mapping
         timer.start("Mesh Update");
-        //if(sources.refineTime())
-        //{
+        if(sources.refineTime())
+        {
             mesh.update();
-        //}
+        }
         timer.stop("Mesh Update");
         
         runTime++;

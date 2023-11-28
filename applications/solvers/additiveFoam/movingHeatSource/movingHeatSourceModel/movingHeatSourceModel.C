@@ -53,8 +53,7 @@ Foam::movingHeatSourceModel::movingHeatSourceModel
     resolveTail_(dict_.lookupOrDefault<bool>("resolveTail", false)),
     nSteps_(0),
     nRevSteps_(0),
-    nRefine_(0),
-    rRefine_(0),
+    nRefineSteps_(0),
     currStep_(0),
     nextRefinement_(0),
     qDot_
@@ -82,7 +81,7 @@ Foam::movingHeatSourceModel::movingHeatSourceModel
     	),
     	mesh_,
     	dimensionedScalar(dimless, 0.0)
-    )  
+    )
 {
     sources_.resize(sourceNames_.size());
         
@@ -106,11 +105,10 @@ Foam::movingHeatSourceModel::movingHeatSourceModel
     
     if(refine_)
     {
-        nSteps_ = dict_.lookup<int>("nSteps");
-        nRevSteps_ = dict_.lookup<int>("nRevSteps");
-        nRefine_ = dict_.lookupOrDefault<int>("nRefine", 1);
-        rRefine_ = dict_.lookupOrDefault<int>("rRefine", 1);
+        nSteps_ = dict_.lookup<label>("nSteps");
+        nRevSteps_ = dict_.lookup<label>("nRevSteps");
         currStep_ = nSteps_ - 1;
+        nRefineSteps_ = dict_.lookupOrDefault<label>("nRefine", 1);
     }
 }
 
@@ -131,10 +129,10 @@ bool Foam::movingHeatSourceModel::refineTime()
         
         return true;
     }
-    
-    else if (mesh_.time().timeIndex() <= nextRefinement_ - nSteps_ + nRefine_)
+
+    else if (mesh_.time().timeIndex() <= nextRefinement_ - nSteps_ + nRefineSteps_)
     {
-        Info << "Re-refining mesh..." << endl;
+        Info << "Performing additional refinement operations." << endl;
         
         return true;
     }
@@ -222,6 +220,8 @@ void Foam::movingHeatSourceModel::update()
                 sumWeights += dt;
             }
             
+            Info << "Current beam position: " << sources_[i].beam().position() << endl;
+            
             qDoti /= sumWeights;
             
             qDot_ += qDoti;
@@ -233,32 +233,55 @@ void Foam::movingHeatSourceModel::update()
                 scalar currDt = mesh_.time().deltaT().value();
                 vector currPos = Zero;
                 scalar currPow = 0.0;
+    
+                dimensionedScalar charLen_ = fvc::domainIntegrate(Foam::pow(mesh_.V(), 1.0/3.0))
+                                             / fvc::domainIntegrate(mesh_.V() / mesh_.V());
+                                             
+                Info << "Mesh characteristic length: " << charLen_ << endl;
 
-                //- Integrate forward ahead of the beam
-                for(int j = 0; j < nSteps_ * rRefine_ + 5; ++j)
-                {
-                    scalar nowTime = currTime + j * currDt;
-                    
-                    sources_[i].beam().move(currPos, currPow, nowTime);
-                    
-                    refinementField_
-                        += pos0(dimensionedScalar(dimLength, sources_[i].D2sigma())
-                           - mag(mesh_.C() - dimensionedVector(dimLength, currPos)));
-                }
+                const int ratio = 2;
                 
-                //- Integrate behind the beam to capture the tail
-                for(int j = 0; j < nRevSteps_; ++j)
+                dimensionedScalar searchRadius(dimLength, sources_[i].D2sigma());
+                
+                //- Repeat search until refinement field is non-zero
+                //  This is required for cases with extremely coarse starting mesh
+                while (max(refinementField_).value() < 1.0)
                 {
-                    scalar nowTime = currTime - j * currDt;
+                    Info << "Searching for cells to refine in radius " << searchRadius.value() << endl;
+                
+                    //- Integrate forward ahead of the beam
+                    for(int j = 0; j < ratio * nSteps_ + 5; ++j)
+                    {
+                        scalar nowTime = currTime + j * currDt;
+                        
+                        sources_[i].beam().move(currPos, currPow, nowTime);
+                        
+                        //dimensionedVector Cxy(mesh_.C().x(), mesh_.C().y(), 0.0);
+                        dimensionedVector currentPosition(dimLength, currPos);
+                        
+                        refinementField_
+                            += pos0(searchRadius - mag(mesh_.C() - currentPosition));
+                    }
                     
-                    if (nowTime < 0.0)
-                        break;
+                    //- Integrate behind the beam to capture the tail
+                    for(int j = 0; j < nRevSteps_; ++j)
+                    {
+                        scalar nowTime = currTime - j * currDt;
+                        
+                        if (nowTime < 0.0)
+                            break;
+                        
+                        sources_[i].beam().move(currPos, currPow, nowTime);
+                        
+                        dimensionedVector currentPosition(dimLength, currPos);
+                        
+                        refinementField_
+                            += pos0(searchRadius - mag(mesh_.C() - currentPosition));
+                    }
                     
-                    sources_[i].beam().move(currPos, currPow, nowTime);
-                    
-                    refinementField_
-                        += pos0(dimensionedScalar(dimLength, sources_[i].D2sigma())
-                           - mag(mesh_.C() - dimensionedVector(dimLength, currPos)));
+                    //- Increase search radius for next loop
+                    //searchRadius *= 4.0;
+                    searchRadius += charLen_;
                 }
             }
         }
