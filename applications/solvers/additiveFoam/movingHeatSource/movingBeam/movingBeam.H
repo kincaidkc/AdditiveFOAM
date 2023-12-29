@@ -185,12 +185,6 @@ public:
             const scalar time
         );
         
-        //- Return beam velocity at provided time
-        scalar velocity
-        (
-            const scalar time
-        );
-        
         //- Returns the path index at the provided time
         label findIndex(const scalar time);
 
