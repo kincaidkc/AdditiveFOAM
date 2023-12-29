@@ -337,6 +337,9 @@ void Foam::movingHeatSourceModel::update()
             }
         }
     }
+    
+    //- Rescale refinement field to be 1 or 0
+    refinementField_ = pos(refinementField_);
 }
 
 // ************************************************************************* //
