@@ -164,9 +164,7 @@ void Foam::movingHeatSourceModel::update()
 
     //- Reset refinement field after desired interval
     bool resetRF = false;
-    if ((mesh_.time().timeIndex() == 0)
-         ||
-        (mesh_.time().timeIndex() == refinementIndex_))
+    if ((refine_) && (mesh_.time().timeIndex() == refinementIndex_))
     {
         resetRF = true;
         
@@ -234,7 +232,7 @@ void Foam::movingHeatSourceModel::update()
             qDot_ += qDoti;
             
             //- Update refinementField
-            if (refine_ && resetRF)
+            if (resetRF)
             {
                 //- Create dummy variables for beam position/power during integration
                 const scalar currTime = mesh_.time().value();
