@@ -99,7 +99,7 @@ void Foam::movingHeatSourceModel::adjustDeltaT(scalar& deltaT)
         //- Limit time step based on beam size and velocity
         vector dimensions = sources_[i].dimensions();
         scalar D4sigma = 2 * max(dimensions.x(), dimensions.y());
-        deltaT = min(deltaT, D4sigma / sources_[i].beam().velocity());
+        deltaT = min(deltaT, D4sigma / max(sources_[i].beam().velocity(), SMALL));
     }
 }
 
