@@ -162,6 +162,22 @@ public:
             return power_;
         }
         
+        //- Return the current velocity of the moving beam at current time
+        inline scalar velocity()
+        {
+            if (path_[index_].mode() == 1)
+            {
+                return 0.0;
+            }
+            else
+            {
+                return path_[index_].parameter();
+            }
+        }
+
+        //- Return the beam velocity of the moving beam at the provided time
+        inline scalar velocity(const scalar time);
+        
         scalar deltaT() const
         {
             return deltaT_;

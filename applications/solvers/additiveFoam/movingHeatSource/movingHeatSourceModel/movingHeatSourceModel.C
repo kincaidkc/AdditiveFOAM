@@ -93,7 +93,13 @@ void Foam::movingHeatSourceModel::adjustDeltaT(scalar& deltaT)
 {
     forAll(sources_, i)
     {
+        //- Limit path to hit time intervals
         sources_[i].beam().adjustDeltaT(deltaT);
+        
+        //- Limit time step based on beam size and velocity
+        vector dimensions = sources_[i].dimensions();
+        scalar D4sigma = 2 * max(dimensions.x(), dimensions.y());
+        deltaT = min(deltaT, D4sigma / sources_[i].beam().velocity());
     }
 }
 

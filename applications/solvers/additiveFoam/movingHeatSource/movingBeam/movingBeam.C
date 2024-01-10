@@ -86,6 +86,23 @@ Foam::movingBeam::movingBeam
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
+inline Foam::scalar 
+Foam::movingBeam::velocity(const scalar time)
+{
+    //- Get index of path at provided time
+    const label i = findIndex(time);
+
+    if (path_[i].mode() == 1)
+    {
+        return 0.0;
+    }
+    else
+    {
+        return path_[i].parameter();
+    }
+}
+
+
 void Foam::movingBeam::readPath()
 {
     const word pName_(beamDict_.lookup("pathName"));
