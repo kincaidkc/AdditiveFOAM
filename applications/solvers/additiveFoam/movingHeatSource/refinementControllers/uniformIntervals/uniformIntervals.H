@@ -79,7 +79,7 @@ public:
         //- Construct from components
         uniformIntervals
         (
-            const PtrList<heatSourceModel> sources,
+            const PtrList<heatSourceModel>& sources,
             const dictionary& dict,
             const fvMesh& mesh
         );

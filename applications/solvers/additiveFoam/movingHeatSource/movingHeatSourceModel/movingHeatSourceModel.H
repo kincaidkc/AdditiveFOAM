@@ -42,12 +42,13 @@ SourceFiles
 
 #include "heatSourceModel.H"
 #include "movingBeam.H"
+#include "refinementController.H"
 
 namespace Foam
 {
 
 /*---------------------------------------------------------------------------*\
-                          Class movingHeatSourceModel Declaration
+                    Class movingHeatSourceModel Declaration
 \*---------------------------------------------------------------------------*/
 
 class movingHeatSourceModel
@@ -70,6 +71,9 @@ private:
                 
         //- Pointer list to each beam instance
         PtrList<heatSourceModel> sources_;
+        
+        //- Pointer to refinement controller
+        autoPtr<refinementController> refinementController_;
 
 public:
 
@@ -90,6 +94,12 @@ public:
         const volScalarField& qDot() const
         {
             return qDot_;
+        }
+        
+        //- Return pointer to the refinement controller
+        refinementController& refinementControl()
+        {
+            return refinementController_();
         }
         
         //- Adjust deltaT using the current state of each beam

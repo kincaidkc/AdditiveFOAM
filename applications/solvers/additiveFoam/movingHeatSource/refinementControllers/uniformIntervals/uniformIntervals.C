@@ -43,15 +43,15 @@ namespace refinementControllers
 
 Foam::refinementControllers::uniformIntervals::uniformIntervals
 (
-    const PtrList<heatSourceModel> sources,
+    const PtrList<heatSourceModel>& sources,
     const dictionary& dict,
     const fvMesh& mesh
 )
 :
-    heatSourceModel(typeName, sources, dict, mesh)
+    refinementController(typeName, sources, dict, mesh)
 {
     intervals_ = refinementDict_.lookup<int>("intervals");
-    dt_ = mesh_.time().endTime() / intervals_;
+    dt_ = mesh_.time().endTime().value() / intervals_;
     updateTime_ = 0.0;
 }
 
@@ -60,21 +60,23 @@ Foam::refinementControllers::uniformIntervals::uniformIntervals
 
 bool Foam::refinementControllers::uniformIntervals::update()
 {
-    if (mesh_.time() >= updateTime_)
+    if (mesh_.time().value() >= updateTime_)
     {
         //- Initialize refinement marker field in base class
         refinementController::initializeRefinementField();
     
         //- Update next refinement time
-        const scalar currTime = mesh_.time();
+        const scalar currTime = mesh_.time().value();
         updateTime_ = currTime + dt_;
         
         //- Buffer for bounding box calculations
         const vector extend = 1e-10 * vector::one;
         
+        const pointField& points = mesh_.points();
+        
         //- Update refinement marker field
         forAll(sources_, i)
-        {
+        {        
             //- Create dummy time for forward march scheme
             scalar beamTime = currTime;
             
@@ -86,11 +88,12 @@ bool Foam::refinementControllers::uniformIntervals::update()
                 
                 //- Calculate max beam timestep based on velocity for
                 //  moving beams, or time until next path for stationary
+                //scalar beamMode = sources_[i].beam().mode(beamTime);
                 scalar beamMode = sources_[i].beam().mode(beamTime);
                 
                 if (beamMode == 1.0)
                 {
-                    beamDt = sources_[i].beam().D2sigma()
+                    beamDt = sources_[i].D2sigma()
                              / sources_[i].beam().parameter(beamTime);
                 }
                 
@@ -100,12 +103,12 @@ bool Foam::refinementControllers::uniformIntervals::update()
                 }
                 
                 //- Ensure final time step refines at next update time
-                beamTime = min(beamTime + dt, updateTime_);
+                beamTime = min(beamTime + beamDt, updateTime_);
                 
                 //- Mark cells near beam at current time/location for
                 //  refinement
                 vector beamDims = sources_[i].dimensions();
-                vector currPos = sources_[i].position(beamTime);
+                vector currPos = sources_[i].beam().position(beamTime);
                 treeBoundBox beamBb(currPos - beamDims, currPos + beamDims);
                 
                 forAll(mesh_.C(), celli)
@@ -125,7 +128,7 @@ bool Foam::refinementControllers::uniformIntervals::update()
                         cellBb.min()
                             = min(cellBb.min(), points[vertices[j]] - extend);
                         cellBb.max()
-                            = max(cellBb.max(), points[vertices[k]] + extend);
+                            = max(cellBb.max(), points[vertices[j]] + extend);
                     }
                     
                     if (cellBb.overlaps(beamBb))

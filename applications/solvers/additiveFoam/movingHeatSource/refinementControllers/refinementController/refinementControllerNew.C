@@ -31,7 +31,7 @@ License
 
 Foam::autoPtr<Foam::refinementController> Foam::refinementController::New
 (
-    const word& sourceName,
+    const PtrList<heatSourceModel>& sources,
     const dictionary& dict,
     const fvMesh& mesh
 )
@@ -39,11 +39,11 @@ Foam::autoPtr<Foam::refinementController> Foam::refinementController::New
     //- Initialize modelType to a non-model word
     word modelType("unselected");
     
-    //- Get model type from source subdict
-    dictionary sourceDict(dict.optionalSubDict(sourceName));
-    sourceDict.lookup("refinementController") >> modelType;
+    //- Get model type from refinement control subdict
+    dictionary refinementControlDict(dict.optionalSubDict("refinementControl"));
+    refinementControlDict.lookup("refinementController") >> modelType;
 
-    Info<< "Selecting heatSource model " << modelType << endl;
+    Info<< "Selecting refinement control model " << modelType << endl;
 
     //- Look up model type from runtime selection table and throw error
     //  if it doesn't exist
@@ -60,7 +60,7 @@ Foam::autoPtr<Foam::refinementController> Foam::refinementController::New
             << exit(FatalError);
     }
 
-    return autoPtr<refinementController>(cstrIter()(sourceName, dict, mesh));
+    return autoPtr<refinementController>(cstrIter()(sources, dict, mesh));
 }
 
 

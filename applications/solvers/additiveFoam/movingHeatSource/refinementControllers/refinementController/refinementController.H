@@ -43,6 +43,7 @@ SourceFiles
 #include "volFields.H"
 #include "movingBeam.H"
 #include "treeBoundBox.H"
+#include "heatSourceModel.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -71,7 +72,7 @@ protected:
     // Protected data
     
         //- PtrList to heatSourceModels
-        const PtrList<heatSourceModel> sources_;
+        const PtrList<heatSourceModel>& sources_;
         
         //- Main heat source dictionary
         const dictionary& heatSourceDict_;
@@ -112,7 +113,7 @@ public:
         refinementController,
         dictionary,
         (
-            const PtrList<heatSourceModel> sources,
+            const PtrList<heatSourceModel>& sources,
             const dictionary& dict,
             const fvMesh& mesh
         ),
@@ -126,7 +127,7 @@ public:
         refinementController
         (
             const word& type,
-            const PtrList<heatSourceModel> sources,
+            const PtrList<heatSourceModel>& sources,
             const dictionary& dict,
             const fvMesh& mesh
         );
@@ -139,7 +140,7 @@ public:
         //- Return a reference to the selected heatSource model
         static autoPtr<refinementController> New
         (
-            const PtrList<heatSourceModel> sources,
+            const PtrList<heatSourceModel>& sources,
             const dictionary& dict,
             const fvMesh& mesh
         );

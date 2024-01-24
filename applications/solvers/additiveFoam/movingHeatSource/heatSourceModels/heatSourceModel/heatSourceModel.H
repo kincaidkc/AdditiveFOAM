@@ -161,7 +161,7 @@ public:
     // Member Functions
     
         //- Return access to the movingBeam instance
-        movingBeam& beam()
+        const movingBeam& beam() const
         {
             return movingBeam_();
         }
@@ -179,7 +179,7 @@ public:
         }
 
         //- Return vector of current heat source dimensions
-        vector dimensions()
+        const vector dimensions() const
         {
             return dimensions_;
         }

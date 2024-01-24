@@ -74,7 +74,7 @@ Foam::IOobject Foam::refinementController::createIOobject
 Foam::refinementController::refinementController
 (
     const word& type,
-    const PtrList<heatSourceModel> sources,
+    const PtrList<heatSourceModel>& sources,
     const dictionary& dict,
     const fvMesh& mesh
 )
@@ -84,8 +84,8 @@ Foam::refinementController::refinementController
     sources_(sources),
     heatSourceDict_(dict),
     mesh_(mesh),
-    refinementDict_(sourceDict_.optionalSubDict(type + "Coeffs")),
-    refine_ = refinementDict_.lookup<bool>("refine"),
+    refinementDict_(heatSourceDict_.optionalSubDict(type + "Coeffs")),
+    refine_(refinementDict_.lookup<bool>("refine")),
     refinementField_
     (
         IOobject
@@ -99,33 +99,24 @@ Foam::refinementController::refinementController
         mesh_,
         dimensionedScalar(dimless, 0.0)
     ),
-    resolveTail_(false),
-    persistence_(0.0)
-{
-    if (refine_)
-    {
-        resolveTail_
-            = refinementDict_.lookupOrDefault<bool>("resolveTail", false);
-        persistence_
-            = refinementDict_.lookupOrDefault<scalar>("persistence", 0.0);
-    }
-    
+    resolveTail_(refine_ ? refinementDict_.lookupOrDefault<bool>("resolveTail", false) : false),
+    persistence_(refine_ ? refinementDict_.lookupOrDefault<scalar>("persistence", 0.0) : 0.0),
     solidificationTime_
-        = new volScalarField
-              (
-                  IOobject
-                  (
-                      "solidificationTime",
-                      mesh_.time().timeName(),
-                      mesh_,
-                      persistence_ > 0.0
-                          ? IOobject::READ_IF_PRESENT : IOobject::NO_READ,
-                      persistence_ > 0.0
-                          ? IOobject::AUTO_WRITE : IOobject::NO_WRITE
-                  ),
-                  mesh_,
-                  dimensionedScalar(dimTime, LARGE)
-              );
+    (
+        IOobject
+        (
+            "solidificationTime",
+            mesh_.time().timeName(),
+            mesh_,
+            persistence_ > 0.0
+                ? IOobject::READ_IF_PRESENT : IOobject::NO_READ,
+            persistence_ > 0.0
+                ? IOobject::AUTO_WRITE : IOobject::NO_WRITE
+        ),
+        mesh_,
+        dimensionedScalar(dimTime, GREAT)
+    )
+{
 }
 
 

@@ -100,7 +100,10 @@ int main(int argc, char *argv[])
         sources.update();
         //timer.stop("Heat Source");
         
-        mesh.update();
+        if (sources.refinementControl().update())
+        {
+            mesh.update();
+        }
         
         runTime++;
 
