@@ -84,7 +84,7 @@ Foam::refinementController::refinementController
     sources_(sources),
     heatSourceDict_(dict),
     mesh_(mesh),
-    refinementDict_(heatSourceDict_.optionalSubDict(type + "Coeffs")),
+    refinementDict_(heatSourceDict_.optionalSubDict("refinementControl")),
     refine_(refinementDict_.lookup<bool>("refine")),
     refinementField_
     (
@@ -115,7 +115,9 @@ Foam::refinementController::refinementController
         ),
         mesh_,
         dimensionedScalar(dimTime, GREAT)
-    )
+    ),
+    lastRefinementIndex_(0),
+    nLevels_(refinementDict_.lookup<label>("nLevels"))
 {
 }
 
@@ -128,11 +130,11 @@ void Foam::refinementController::initializeRefinementField()
     if (resolveTail_)
     {
         const volScalarField alphaSol
-            = mesh_.lookupObject<volScalarField>("alpha1");
+            = mesh_.lookupObject<volScalarField>("alpha.solid");
             
         const volScalarField alphaSol0 = alphaSol.oldTime();
         
-        refinementField_ = pos0(1.0 - alphaSol);
+        refinementField_ = pos(1.0 - alphaSol);
         
         if (persistence_ > 0.0)
         {

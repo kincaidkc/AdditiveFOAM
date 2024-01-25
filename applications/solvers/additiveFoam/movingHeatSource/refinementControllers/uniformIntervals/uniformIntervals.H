@@ -58,6 +58,9 @@ class uniformIntervals
     public refinementController
 {
     // Private Data
+    
+        //- Dictionary
+        dictionary coeffs_;
         
         //- Number of intervals
         int intervals_;

@@ -97,6 +97,12 @@ protected:
         
         //- Time field to track solidification time
         volScalarField solidificationTime_;
+        
+        //- Time index of last refinement operation
+        label lastRefinementIndex_;
+        
+        //- Number of refinement levels
+        label nLevels_;
 
 public:
 

@@ -48,11 +48,13 @@ Foam::refinementControllers::uniformIntervals::uniformIntervals
     const fvMesh& mesh
 )
 :
-    refinementController(typeName, sources, dict, mesh)
+    refinementController(typeName, sources, dict, mesh),
+    
+    coeffs_(refinementDict_.optionalSubDict(typeName + "Coeffs")),
+    intervals_(coeffs_.lookup<int>("intervals")),
+    dt_(mesh_.time().endTime().value() / intervals_),
+    updateTime_(0.0)
 {
-    intervals_ = refinementDict_.lookup<int>("intervals");
-    dt_ = mesh_.time().endTime().value() / intervals_;
-    updateTime_ = 0.0;
 }
 
 
@@ -60,8 +62,18 @@ Foam::refinementControllers::uniformIntervals::uniformIntervals
 
 bool Foam::refinementControllers::uniformIntervals::update()
 {
+    //- Update refinement field at update time
     if (mesh_.time().value() >= updateTime_)
     {
+        //- Update refinement index
+        lastRefinementIndex_ = mesh_.time().timeIndex();
+        
+        //- Call an extra mesh refinement on the first time
+        if (mesh_.time().timeIndex() == 0)
+        {
+            ++lastRefinementIndex_;
+        }
+        
         //- Initialize refinement marker field in base class
         refinementController::initializeRefinementField();
     
@@ -81,29 +93,13 @@ bool Foam::refinementControllers::uniformIntervals::update()
             scalar beamTime = currTime;
             
             //- March along beam path until next update time is reached
-            while (beamTime <= updateTime_)
+            while (beamTime < updateTime_)
             {
-                //- Initialize time step size and velocity
-                scalar beamDt = 0.0;
-                
-                //- Calculate max beam timestep based on velocity for
-                //  moving beams, or time until next path for stationary
-                //scalar beamMode = sources_[i].beam().mode(beamTime);
-                scalar beamMode = sources_[i].beam().mode(beamTime);
-                
-                if (beamMode == 1.0)
+                //- Check if path is still active
+                if (!sources_[i].beam().activePath(beamTime))
                 {
-                    beamDt = sources_[i].D2sigma()
-                             / sources_[i].beam().parameter(beamTime);
+                    break;
                 }
-                
-                else
-                {
-                    beamDt = sources_[i].beam().timeToNextPath(beamTime);
-                }
-                
-                //- Ensure final time step refines at next update time
-                beamTime = min(beamTime + beamDt, updateTime_);
                 
                 //- Mark cells near beam at current time/location for
                 //  refinement
@@ -136,12 +132,52 @@ bool Foam::refinementControllers::uniformIntervals::update()
                         refinementField_[celli] = 1.0;
                     }
                 }
+            
+                //- Initialize time marching step size
+                scalar beamDt = 0.0;
+                
+                //- Calculate max beam timestep based on velocity for
+                //  moving beams, or time until next path for stationary
+                //scalar beamMode = sources_[i].beam().mode(beamTime);
+                scalar beamMode = sources_[i].beam().mode(beamTime);
+                scalar timeToNext = sources_[i].beam().timeToNextPath(beamTime);
+                
+                if (beamMode == 0.0)
+                {
+                    beamDt = sources_[i].D2sigma()
+                             / max(sources_[i].beam().parameter(beamTime), SMALL);
+                             
+                    //- Ensure end of path is refined
+                    if (timeToNext > 1e-6)
+                    {         
+                        beamDt = min(beamDt, timeToNext - 1e-10);
+                    }
+                }
+                
+                else
+                {
+                    beamDt = timeToNext;
+                }
+                
+                //- Ensure end of interval gets refined
+                beamTime += beamDt;
+                
+                if (abs(beamTime - updateTime_) > 1e-6)
+                {
+                    beamTime = min(beamTime, updateTime_ - 1e-10);
+                }
             }            
         }
         
         refinementField_ = pos(refinementField_);
         
         //- Return true to call mesh.update()
+        return true;
+    }
+    
+    //- Perform additional refinements after field update to achieve full resolution
+    else if (lastRefinementIndex_ + nLevels_ > mesh_.time().timeIndex())
+    {
         return true;
     }
     

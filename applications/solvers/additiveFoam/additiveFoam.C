@@ -102,6 +102,7 @@ int main(int argc, char *argv[])
         
         if (sources.refinementControl().update())
         {
+            Info << "Calling mesh.update()" << endl;
             mesh.update();
         }
         
