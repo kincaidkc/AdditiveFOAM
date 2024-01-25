@@ -114,7 +114,7 @@ Foam::refinementController::refinementController
                 ? IOobject::AUTO_WRITE : IOobject::NO_WRITE
         ),
         mesh_,
-        dimensionedScalar(dimTime, GREAT)
+        dimensionedScalar(dimless, -GREAT)
     ),
     lastRefinementIndex_(0),
     nLevels_(refinementDict_.lookup<label>("nLevels"))
@@ -124,38 +124,48 @@ Foam::refinementController::refinementController
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
+bool Foam::refinementController::update()
+{
+    //- Update solidification time field at every time step
+    if (persistence_ > 0.0)
+    {
+        const scalar currTime = mesh_.time().value();
+    
+        const volScalarField& alphaSol
+            = mesh_.lookupObject<volScalarField>("alpha.solid");
+            
+        const volScalarField& alphaSol0 = alphaSol.oldTime();
+        
+        forAll(mesh_.C(), celli)
+        {
+            if ((alphaSol[celli] > 0.99) && (alphaSol0[celli] < 0.99))
+            {
+                solidificationTime_[celli] = currTime;
+            }
+        }
+    }
+    
+    return true;
+}
+
 void Foam::refinementController::initializeRefinementField()
 {
     //- Initialize refinement field to capture melt pool
     if (resolveTail_)
     {
-        const volScalarField alphaSol
+        const volScalarField& alphaSol
             = mesh_.lookupObject<volScalarField>("alpha.solid");
-            
-        const volScalarField alphaSol0 = alphaSol.oldTime();
         
         refinementField_ = pos(1.0 - alphaSol);
         
         if (persistence_ > 0.0)
         {
             const scalar currTime = mesh_.time().value();
-        
-            //- Update solidification time field
-            forAll(mesh_.C(), celli)
-            {
-                if ((alphaSol[celli] > 0.99) && (alphaSol0[celli] < 0.99))
-                {
-                    //- Update solidification time field
-                    solidificationTime_[celli] = currTime;
-                }
-                
-                //- Ensure recently solidified regions stay refined
-                //  for persistence time
-                if (solidificationTime_[celli] + persistence_ < currTime)
-                {
-                    refinementField_[celli] = 1.0;
-                }
-            }
+            
+            //- Ensure recently solidified regions stay refined
+            //  for persistence time
+            refinementField_
+                += pos(solidificationTime_ + persistence_ - currTime);
         }        
     }
     

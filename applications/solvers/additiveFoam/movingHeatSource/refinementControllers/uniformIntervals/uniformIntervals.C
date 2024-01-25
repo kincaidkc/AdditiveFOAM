@@ -62,6 +62,9 @@ Foam::refinementControllers::uniformIntervals::uniformIntervals
 
 bool Foam::refinementControllers::uniformIntervals::update()
 {
+    //- Call base class update
+    bool baseUpdate = refinementController::update();
+    
     //- Update refinement field at update time
     if (mesh_.time().value() >= updateTime_)
     {
