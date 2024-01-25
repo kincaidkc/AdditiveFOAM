@@ -145,6 +145,11 @@ bool Foam::refinementControllers::uniformIntervals::update()
                 scalar beamMode = sources_[i].beam().mode(beamTime);
                 scalar timeToNext = sources_[i].beam().timeToNextPath(beamTime);
                 
+                Info << "Current sim time: " << currTime << endl;
+                Info << "Current beam time: " << beamTime << endl;
+                Info << "Current path: " << sources_[i].beam().findIndex(beamTime) << endl;
+                Info << "Current timeToNext: " << timeToNext << endl;
+                
                 if (beamMode == 0.0)
                 {
                     beamDt = sources_[i].D2sigma()
@@ -153,13 +158,19 @@ bool Foam::refinementControllers::uniformIntervals::update()
                     //- Ensure end of path is refined
                     if (timeToNext > 1e-6)
                     {         
-                        beamDt = min(beamDt, timeToNext - 1e-10);
+                        beamDt = min(beamDt, timeToNext - 1e-8);
                     }
+                    
+                    Info << "Beam Mode 0: Using beamDt = " << beamDt << endl;
                 }
                 
                 else
                 {
-                    beamDt = timeToNext;
+                    beamDt = timeToNext + 1e-8; // this extra tolerance is needed 
+                                                // so that mode 0 paths don't get
+                                                // skipped following a mode 1 path
+                    
+                    Info << "Beam Mode 1: Using beamDt = " << beamDt << endl;
                 }
                 
                 //- Ensure end of interval gets refined
@@ -167,7 +178,9 @@ bool Foam::refinementControllers::uniformIntervals::update()
                 
                 if (abs(beamTime - updateTime_) > 1e-6)
                 {
-                    beamTime = min(beamTime, updateTime_ - 1e-10);
+                    beamTime = min(beamTime, updateTime_ - 1e-8);
+                    
+                    Info << "Forcing final update before updateTime" << endl;
                 }
             }            
         }
