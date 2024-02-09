@@ -65,8 +65,11 @@ class uniformIntervals
         //- Number of intervals
         int intervals_;
         
+        //- Bounding box size for beam (multiples of D1sigma)
+        scalar boundingBox_;
+        
         //- Time duration of each interval
-        scalar dt_;
+        scalar intervalSize_;
         
         //- Time for next update
         scalar updateTime_;

@@ -19,7 +19,7 @@ sources (beam);
 
 beam
 {
-    pathName            five_mm_square;    
+    pathName            scan_path_even;    
 
     absorptionModel     constant;
     

@@ -52,9 +52,12 @@ Foam::refinementControllers::uniformIntervals::uniformIntervals
     
     coeffs_(refinementDict_.optionalSubDict(typeName + "Coeffs")),
     intervals_(coeffs_.lookup<int>("intervals")),
-    dt_(mesh_.time().endTime().value() / intervals_),
+    boundingBox_(coeffs_.lookupOrDefault<scalar>("boundingBox", 3)),
+    intervalSize_(mesh_.time().endTime().value() / intervals_),
     updateTime_(0.0)
 {
+    //- Divide bounding box by 2, since beam dimensions are returned as D2sigma
+    boundingBox_ /= 2.0;
 }
 
 
@@ -62,11 +65,10 @@ Foam::refinementControllers::uniformIntervals::uniformIntervals
 
 bool Foam::refinementControllers::uniformIntervals::update()
 {
-    //- Call base class update
-    bool baseUpdate = refinementController::update();
-    
     //- Update refinement field at update time
-    if (mesh_.time().value() >= updateTime_)
+    if ((refinementController::update())
+        &&
+        (mesh_.time().value() >= updateTime_))
     {
         //- Update refinement index
         lastRefinementIndex_ = mesh_.time().timeIndex();
@@ -74,7 +76,7 @@ bool Foam::refinementControllers::uniformIntervals::update()
         //- Call an extra mesh refinement on the first time
         if (mesh_.time().timeIndex() == 0)
         {
-            ++lastRefinementIndex_;
+            lastRefinementIndex_ = 1;
         }
         
         //- Initialize refinement marker field in base class
@@ -82,7 +84,7 @@ bool Foam::refinementControllers::uniformIntervals::update()
     
         //- Update next refinement time
         const scalar currTime = mesh_.time().value();
-        updateTime_ = currTime + dt_;
+        updateTime_ = currTime + intervalSize_;
         
         //- Buffer for bounding box calculations
         const vector extend = 1e-10 * vector::one;
@@ -108,7 +110,11 @@ bool Foam::refinementControllers::uniformIntervals::update()
                 //  refinement
                 vector beamDims = sources_[i].dimensions();
                 vector currPos = sources_[i].beam().position(beamTime);
-                treeBoundBox beamBb(currPos - beamDims, currPos + beamDims);
+                treeBoundBox beamBb
+                (
+                    currPos - boundingBox_ * beamDims,
+                    currPos + boundingBox_ * beamDims
+                );
                 
                 forAll(mesh_.C(), celli)
                 {
@@ -212,6 +218,7 @@ bool Foam::refinementControllers::uniformIntervals::read()
 
         //- Mandatory entries
         refinementDict_.lookup("intervals") >> intervals_;
+        refinementDict_.lookup("boundingBox") >> boundingBox_;
 
         return true;
     }

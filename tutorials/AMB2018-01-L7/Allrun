@@ -1,4 +1,9 @@
 #!/bin/sh
+
+# AMB2018-01-L7
+# Reference: https://www.nist.gov/ambench/amb2018-01-description
+# 5x5 mm square scan path
+
 cd ${0%/*} || exit 1    # Run from this directory
 
 # Source tutorial run functions
