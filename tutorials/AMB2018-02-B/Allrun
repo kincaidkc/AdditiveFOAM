@@ -12,6 +12,7 @@ cd ${0%/*} || exit 1    # Run from this directory
 application=`getApplication`
 
 # Activate AMR by renaming the dynamicMeshDict
+# Note: see also comments in decomposeParDict
 #cp dynamicMeshDictAMR dynamicMeshDict
 
 runApplication blockMesh
