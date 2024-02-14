@@ -64,6 +64,10 @@ class ROAMR
         
         //- Target cells per processor (default 20k)
         int cellsPerProc_;
+        
+        //- Maximum number of intervals to maintain at 
+        //  least D4sigma interval length
+        scalar maxIntervals_;
 
 public:
 

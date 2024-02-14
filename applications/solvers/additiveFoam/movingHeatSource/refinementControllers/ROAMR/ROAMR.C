@@ -53,19 +53,21 @@ Foam::refinementControllers::ROAMR::ROAMR
     coeffs_(refinementDict_.optionalSubDict(typeName + "Coeffs")),
     cellsPerProc_(coeffs_.lookupOrDefault<int>("cellsPerProc", 20000))
 {
-    //- Take first guess at interval size
     Info << "Calculating initial AMR interval size..." << endl;
     
+    label totalCells = mesh_.nCells();
+    reduce(totalCells, sumOp<label>());
+    
     //- Get average cell volume and cross-sectional area
-    scalar vAvg = gSum(mesh_.V()) / mesh_.nCells();
+    scalar vAvg = gSum(mesh_.V()) / totalCells;
     
     //- Get approximate cross-sectional area of each beam
     scalar scanArea = 0.0;
     scalar maxLen = 0.0;
-    scalar scanEnd = 0.0;
+    scalar minBeamDims = GREAT;
     forAll(sources_, i)
     {
-        scanArea += boundingBox_ / 2.0 
+        scanArea += 2.0 * boundingBox_
                     * max
                       (
                         sources_[i].dimensions().x(),
@@ -74,25 +76,38 @@ Foam::refinementControllers::ROAMR::ROAMR
                     * sources_[i].dimensions().z();
                     
         maxLen = max(sources_[i].beam().length(), maxLen);
-        scanEnd = max(sources_[i].beam().endTime(), scanEnd);
+        
+        minBeamDims
+            = min
+              (
+                  minBeamDims,
+                  min
+                  (
+                      sources_[i].dimensions().x(),
+                      sources_[i].dimensions().y()
+                  )
+              );
     }
+    
+    maxIntervals_ = maxLen / minBeamDims;
     
     //- Calculate number of intervals to optimize cells per processor
     scalar targetCells = Pstream::nProcs() * cellsPerProc_;
     
-    if (targetCells > mesh_.nCells())
+    if (targetCells > totalCells)
     {
-        intervals_ = maxLen * scanArea / vAvg / (targetCells - mesh_.nCells())
+        intervals_ = maxLen * scanArea / vAvg
+                     / (targetCells - totalCells)
                      * (Foam::pow(2.0, 3.0 * nLevels_) - 1.0);
     }
     
-    // Enforce nInvervals >= 1
-    intervals_ = max(intervals_, 1.0);
+    //- Bound number of intervals between 1 and maxIntervals
+    intervals_ = max(min(intervals_, maxIntervals_), 1.0);
     
-    Info << "Settiing initial number of intervals to: " << intervals_ << endl;
+    Info << "Setting initial number of intervals to: " << intervals_ << endl;
     
     //- Set number of intervals in uniformIntervals class    
-    intervalSize_ = scanEnd / intervals_;
+    intervalSize_ = endTime_ / intervals_;
     
     Info << "Setting initial interval size to: " << intervalSize_ << endl;
 }
@@ -103,28 +118,37 @@ Foam::refinementControllers::ROAMR::ROAMR
 bool Foam::refinementControllers::ROAMR::update()
 {
     //- Scale interval size based on current cells/proc
-    scalar currCellsPerProc = mesh_.nCells() / Pstream::nProcs();
+    label totalCells = mesh_.nCells();
+    reduce(totalCells, sumOp<label>());
+    scalar currCellsPerProc = totalCells / Pstream::nProcs();
     
     Info << "Current cells per processor: " << currCellsPerProc << endl;
     
+    //- Too few cells per proc?
     if (currCellsPerProc < cellsPerProc_)
     {
-        intervalSize_ =
+        intervals_ =
             min
             (
-                intervalSize_ * cellsPerProc_ / currCellsPerProc,
-                1.1 * intervalSize_
+                intervals_ * cellsPerProc_ / currCellsPerProc,
+                1.1 * intervals_
             );
     }
     else
     {
-        intervalSize_ =
+        intervals_ =
             max
             (
-                intervalSize_ * currCellsPerProc / cellsPerProc_,
-                0.9 * intervalSize_
+                intervals_ * currCellsPerProc / cellsPerProc_,
+                0.9 * intervals_
             );
     }
+    
+    //- Bound number of intervals between 1 and maxIntervals
+    intervals_ = max(min(intervals_, maxIntervals_), 1.0);
+    
+    //- Recalculated interval size
+    intervalSize_ = endTime_ / intervals_;
     
     //- Update refinement field using uniform intervals functions
     if (uniformIntervals::update())

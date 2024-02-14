@@ -72,6 +72,9 @@ protected:
         //- Bounding box size for beam (multiples of D1sigma)
         scalar boundingBox_;
         
+        //- End time of scan and/or sim
+        scalar endTime_;
+        
         //- Time duration of each interval
         scalar intervalSize_;
         

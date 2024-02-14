@@ -55,11 +55,24 @@ Foam::refinementControllers::uniformIntervals::uniformIntervals
                   : refinementDict_.optionalSubDict(typeName + "Coeffs")),
     intervals_(roamr ? 1.0 : coeffs_.lookup<scalar>("intervals")),
     boundingBox_(coeffs_.lookupOrDefault<scalar>("boundingBox", 3)),
-    intervalSize_(mesh_.time().endTime().value() / intervals_),
+    endTime_(mesh_.time().endTime().value()),
+    intervalSize_(endTime_ / intervals_),
     updateTime_(0.0)
 {
     //- Divide bounding box by 2, since beam dimensions are returned as D2sigma
     boundingBox_ /= 2.0;
+    
+    //- Recalculate interval size using beam end time
+    scalar beamEndTime = 0.0;
+    
+    forAll(sources_, i)
+    {
+        beamEndTime = max(beamEndTime, sources_[i].beam().endTime());
+    }
+    
+    endTime_ = min(beamEndTime, endTime_);
+    
+    intervalSize_ = endTime_ / intervals_;
 }
 
 
