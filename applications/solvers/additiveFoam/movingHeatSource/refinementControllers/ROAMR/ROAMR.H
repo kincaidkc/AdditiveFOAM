@@ -24,7 +24,7 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::refinementControllers::uniformIntervals
+    Foam::refinementControllers::ROAMR
 
 Description
     This refinement control scheme divides the simulation into an even
@@ -33,14 +33,14 @@ Description
     interval.
 
 SourceFiles
-    uniformIntervals.C
+    ROAMR.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef uniformIntervals_H
-#define uniformIntervals_H
+#ifndef ROAMR_H
+#define ROAMR_H
 
-#include "refinementController.H"
+#include "uniformIntervals.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -50,54 +50,40 @@ namespace refinementControllers
 {
 
 /*---------------------------------------------------------------------------*\
-                             Class uniformIntervals
+                             Class ROAMR
 \*---------------------------------------------------------------------------*/
 
-class uniformIntervals
+class ROAMR
 :
-    public refinementController
+    public uniformIntervals
 {
-    //- Private Data
+    // Private Data
     
         //- Dictionary
         dictionary coeffs_;
         
-protected:
-
-   //- Protected data
-        
-        //- Number of intervals
-        scalar intervals_;
-        
-        //- Bounding box size for beam (multiples of D1sigma)
-        scalar boundingBox_;
-        
-        //- Time duration of each interval
-        scalar intervalSize_;
-        
-        //- Time for next update
-        scalar updateTime_;
+        //- Target cells per processor (default 20k)
+        int cellsPerProc_;
 
 public:
 
     //- Runtime type information
-    TypeName("uniformIntervals");
+    TypeName("ROAMR");
 
 
     // Constructors
 
         //- Construct from components
-        uniformIntervals
+        ROAMR
         (
             const PtrList<heatSourceModel>& sources,
             const dictionary& dict,
-            const fvMesh& mesh,
-            const bool& roamr = false
+            const fvMesh& mesh
         );
 
 
     //- Destructor
-    virtual ~uniformIntervals()
+    virtual ~ROAMR()
     {}
 
 

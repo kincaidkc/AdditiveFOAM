@@ -48,10 +48,16 @@ refinementControl
     
     refinementController    none;
     //refinementController    uniformIntervals;
+    //refinementController    ROAMR;
     
     uniformIntervalsCoeffs
     {
-        intervals   10;
+        intervals           10;
+    }
+    
+    ROAMRCoeffs
+    {
+        cellsPerProc        20000;
     }
 }
 
