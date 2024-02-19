@@ -126,8 +126,16 @@ Foam::refinementController::refinementController
 
 bool Foam::refinementController::update()
 {
+    //- Skip mesh update on first time step
+    //  (fvMeshTopoChangerRefiner will not update on first time index)
+    if (mesh_.time().timeIndex() == 0)
+    {
+        Info << "Skipping refinement on first time step." << endl;
+        return false;
+    }
+    
     //- Update solidification time field at every time step
-    if (persistence_ > 0.0)
+    else if (persistence_ > 0.0)
     {
         const scalar currTime = mesh_.time().value();
     
@@ -143,9 +151,14 @@ bool Foam::refinementController::update()
                 solidificationTime_[celli] = currTime;
             }
         }
+        
+        return true;
     }
     
-    return true;
+    else
+    {
+        return true;
+    }
 }
 
 void Foam::refinementController::initializeRefinementField()
