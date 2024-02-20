@@ -42,6 +42,7 @@ refinementControl
 {
     refine                  true;
     nLevels                 2;
+    
     refinementTemperature   1400;
         
     //refinementController    none;
