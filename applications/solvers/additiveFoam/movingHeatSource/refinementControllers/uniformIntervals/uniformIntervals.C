@@ -94,129 +94,108 @@ Foam::refinementControllers::uniformIntervals::uniformIntervals
 
 bool Foam::refinementControllers::uniformIntervals::update()
 {
-    //- Refine if OK with base class
-    if (refinementController::update())
+    if ((updateTime_ - mesh_.time().value()) < small)
     {
-        if ((updateTime_ - mesh_.time().value()) < small)
+        // update refinement index and next refinement time
+        lastRefinementIndex_ = mesh_.time().timeIndex();
+        updateTime_ = mesh_.time().value() + intervalTime_;
+
+        //- Set initial refinement field in base class
+        refinementController::setRefinementField();
+
+        if ((endTime_ - mesh_.time().value()) < small)
         {
-            // update refinement index and next refinement time
-            lastRefinementIndex_ = mesh_.time().timeIndex();
+            Info << "continuing AMR checks for possible mesh coarsening" << endl;
+            return true;
+        }
 
-            // TODO: evaluate if this time update is the desired behavior...
-            // If we want to refine AT some specified time,
-            // we would need to use to mesh time plus the calculated time step
-            updateTime_ = mesh_.time().value() + intervalTime_;
+        //- Calculate the bounding box for each cell
+        List<treeBoundBox> cellBbs(mesh_.nCells());    
+        const pointField& points = mesh_.points();
+        const vector extend = 1e-10 * vector::one;
 
-            //- Set initial refinement field in base class
-            refinementController::setRefinementField();
+        forAll(mesh_.cells(), celli)
+        {
+            treeBoundBox cellBb(point::max, point::min);
 
-            // Continue to check for possible coarsening at select intervals
-            if ((endTime_ - mesh_.time().value()) < small)
+            const labelList& vertices = mesh_.cellPoints()[celli];
+
+            forAll(vertices, j)
             {
-                Info << "continuing checks for possible mesh coarsening" << endl;
-                return true;
+                cellBb.min()
+                    = min(cellBb.min(), points[vertices[j]] - extend);
+                cellBb.max()
+                    = max(cellBb.max(), points[vertices[j]] + extend);
             }
 
-            //- Calculate the bounding box for each cell
-            List<treeBoundBox> cellBbs(mesh_.nCells());    
-            const pointField& points = mesh_.points();
-            const vector extend = 1e-10 * vector::one;
+            cellBbs[celli] = cellBb;
+        }
 
-            forAll(mesh_.cells(), celli)
-            {
-                treeBoundBox cellBb(point::max, point::min);
-
-                const labelList& vertices = mesh_.cellPoints()[celli];
-
-                forAll(vertices, j)
-                {
-                    cellBb.min()
-                        = min(cellBb.min(), points[vertices[j]] - extend);
-                    cellBb.max()
-                        = max(cellBb.max(), points[vertices[j]] + extend);
-                }
-
-                cellBbs[celli] = cellBb;
-            }
-
-            //- Update refinement marker field:
-            //-   1. March along beam paths until next update time or path end
-            //-   2. Mark overlap cells for refinement.
-            forAll(sources_, i)
-            {
-                const movingBeam& beam_ = sources_[i].beam();
-                
-                scalar time_ = mesh_.time().value();
-
-                vector offset_ = 1.5*sources_[i].dimensions();
-
-                while ((min(beam_.endTime(), updateTime_) - time_) > small)
-                {
-                    vector position_ = beam_.position(time_);
-
-                    treeBoundBox beamBb
-                    (
-                        position_ - min(offset_, boundingBox_.min()),
-                        position_ + max(offset_, boundingBox_.max())
-                    );
-                    
-                    forAll(mesh_.cells(), celli)
-                    {
-                        if (refinementField_[celli] > 0)
-                        {
-                            // Do nothing, cell already marked for refiment
-                        }
-                        else if (cellBbs[celli].overlaps(beamBb))
-                        {
-                            refinementField_[celli] = 1;
-                        }
-                    }
-                    refinementField_.correctBoundaryConditions();
-
-                    // Calculate time step required to resolve beam motion on mesh
-                    label index_ = beam_.findIndex(time_);
-                    segment path_ = beam_.getSegment(index_);
-                    scalar timeToNextPath_ = path_.time() - time_;
-
-                    // if the path end time is directly hit, step to next path
-                    while (mag(timeToNextPath_) < small)
-                    {
-                        index_ = index_ + 1;
-                        path_ = beam_.getSegment(index_);
-                        timeToNextPath_ = path_.time() - time_;
-                    }
-
-                    scalar dt_ = min(timeToNextPath_, max(0, updateTime_ - time_));
-
-                    if (path_.mode() == 0)
-                    {
-                        const scalar scanTime_ =
-                            sources_[i].D2sigma() / path_.parameter();
-
-                        dt_ = min(timeToNextPath_, scanTime_);
-                    }
-
-                    time_ += dt_;
-                }
-            }
+        //- Update refinement marker field:
+        //-   1. March along beam paths until next update time or path end
+        //-   2. Mark overlap cells for refinement.
+        forAll(sources_, i)
+        {
+            const movingBeam& beam_ = sources_[i].beam();
             
-            Info << "Updating AMR field and returning true" << endl;
-            return true;
+            scalar time_ = mesh_.time().value();
+
+            vector offset_ = 1.5*sources_[i].dimensions();
+
+            while ((min(beam_.endTime(), updateTime_) - time_) > small)
+            {
+                vector position_ = beam_.position(time_);
+
+                treeBoundBox beamBb
+                (
+                    position_ - min(offset_, boundingBox_.min()),
+                    position_ + max(offset_, boundingBox_.max())
+                );
+                
+                forAll(mesh_.cells(), celli)
+                {
+                    if (refinementField_[celli] > 0)
+                    {
+                        // Do nothing, cell already marked for refiment
+                    }
+                    else if (cellBbs[celli].overlaps(beamBb))
+                    {
+                        refinementField_[celli] = 1;
+                    }
+                }
+                refinementField_.correctBoundaryConditions();
+
+                // Calculate time step required to resolve beam motion on mesh
+                label index_ = beam_.findIndex(time_);
+                segment path_ = beam_.getSegment(index_);
+                scalar timeToNextPath_ = path_.time() - time_;
+
+                // if the path end time is directly hit, step to next path
+                while (mag(timeToNextPath_) < small)
+                {
+                    index_ = index_ + 1;
+                    path_ = beam_.getSegment(index_);
+                    timeToNextPath_ = path_.time() - time_;
+                }
+
+                scalar dt_ = min(timeToNextPath_, max(0, updateTime_ - time_));
+
+                if (path_.mode() == 0)
+                {
+                    const scalar scanTime_ =
+                        sources_[i].D2sigma() / path_.parameter();
+
+                    dt_ = min(timeToNextPath_, scanTime_);
+                }
+
+                time_ += dt_;
+            }
         }
-        else if ((mesh_.time().timeIndex() - lastRefinementIndex_) < nLevels_)
-        {
-            Info << "Performing additional refinements" << endl;
-            return true;
-        }
-        else
-        {
-            return false;
-        }
+        
+        Info << "Updating AMR field to trigger refinement" << endl;
     }
-    else
-    {
-        return false;
-    }
+
+    return true;
 }
 
 

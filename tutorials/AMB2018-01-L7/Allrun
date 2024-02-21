@@ -13,9 +13,7 @@ application=`getApplication`
 
 runApplication blockMesh
 runApplication decomposePar
-#runParallel $application
-
-srun -p asina -J surrogate -N 1 -n 16 --mem=0 --exclusive additiveFoam -parallel > log.additiveFoam 2>&1
+runParallel $application
 
 runApplication reconstructPar
 

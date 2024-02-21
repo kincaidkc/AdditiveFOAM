@@ -42,15 +42,14 @@ refinementControl
     refine                  true;
     nLevels                 2;
     
-    resolveTail             true;
-    persistence             1e-4;
+    refinementTemperature   1e15;//1250;
     
     refinementController    uniformIntervals;
     
     uniformIntervalsCoeffs
     {
-        intervals   100;
-        boundingBox (-50e-6 -50e-6 -50e-6) (50e-6 50e-6 0);
+        intervals   20;
+        //boundingBox (-50e-6 -50e-6 -50e-6) (50e-6 50e-6 0);
     }
 }
 

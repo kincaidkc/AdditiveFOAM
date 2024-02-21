@@ -153,6 +153,9 @@ void Foam::movingHeatSourceModel::update()
     }
 
     qDot_.correctBoundaryConditions();
+
+    // update the heat source-based AMR field
+    refinementController_->update();
 }
 
 // ************************************************************************* //

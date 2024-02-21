@@ -49,7 +49,7 @@ distributor
 
     libs            ("libfvMeshDistributors.so");
 
-    redistributionInterval  5;
+    redistributionInterval  1;
 }
 
 

@@ -126,19 +126,12 @@ Foam::refinementController::refinementController
 
 bool Foam::refinementController::update()
 {
-    if (mesh_.time().timeIndex() == 0)
-    {
-        return false;
-    }
-    else
-    {
-        return true;
-    }
+    return true;
 }
 
 void Foam::refinementController::setRefinementField()
 {
-    // TODO: Add gradient based criteria
+    // TODO: Add gradient based criteria (if necessary)
     const volScalarField& T = mesh_.lookupObject<volScalarField>("T");
 
     forAll(mesh_.cells(), celli)
