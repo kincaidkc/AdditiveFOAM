@@ -45,8 +45,8 @@ refinementControl
     
     refinementTemperature   1400;
         
-    //refinementController    none;
-    refinementController    uniformIntervals;
+    refinementController    none;
+    //refinementController    uniformIntervals;
     
     uniformIntervalsCoeffs
     {

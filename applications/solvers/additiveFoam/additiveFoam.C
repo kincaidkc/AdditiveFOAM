@@ -46,15 +46,13 @@ Description
 #include "constrainHbyA.H"
 #include "pimpleControl.H"
 #include "fvCorrectPhi.H"
-
-#include "interpolateXY/interpolateXY.H"
-#include "graph/graph.H"
 #include "Polynomial.H"
 
+// AdditiveFOAM specific headers
 #include "movingHeatSourceModel.H"
-#include "foamToExaCA/foamToExaCA.H"
-
-#include "utils/Timer.H" // for profiling, if desired
+#include "graph.H"
+#include "interpolateXY.H"
+#include "Timer.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -76,12 +74,10 @@ int main(int argc, char *argv[])
 
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
     
-    // initialize time-stepping controls
+    // Initialize time-stepping controls
     scalar DiNum = 0.0;
 
     scalar alphaCoNum = 0.0;
-
-    foamToExaCA ExaCA(T);
 
     movingHeatSourceModel sources(mesh);
 
@@ -125,21 +121,12 @@ int main(int argc, char *argv[])
         #include "thermo/TEqn.H"
         timer.stop("Thermo Solve");
         
-        ExaCA.update();
-
         runTime.write();
-        
-        if (runTime.writeTime())
-        {
-            sources.qDot().write();
-        }
 
         Info<< "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
             << "  ClockTime = " << runTime.elapsedClockTime() << " s"
             << nl << endl;
     }
-
-    ExaCA.write();
     
     // Write time profiling information
     timer.write();
