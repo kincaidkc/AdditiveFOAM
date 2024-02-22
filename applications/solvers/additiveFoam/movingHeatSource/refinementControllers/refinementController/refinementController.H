@@ -92,9 +92,6 @@ protected:
         //- Temperature above which refinement occurs
         scalar refinementTemperature_;
 
-        //- Time index of last refinement operation
-        label lastRefinementIndex_;
-
         //- Marker field for refinement operations
         volScalarField refinementField_;
 

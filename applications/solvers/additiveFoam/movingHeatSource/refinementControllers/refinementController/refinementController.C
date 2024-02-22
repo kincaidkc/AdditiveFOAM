@@ -103,7 +103,6 @@ Foam::refinementController::refinementController
       ? refinementDict_.lookupOrDefault<scalar>("refinementTemperature", GREAT)
       : GREAT
     ),
-    lastRefinementIndex_(0),
     refinementField_
     (
         IOobject
@@ -123,11 +122,6 @@ Foam::refinementController::refinementController
 
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
-
-bool Foam::refinementController::update()
-{
-    return true;
-}
 
 void Foam::refinementController::setRefinementField()
 {

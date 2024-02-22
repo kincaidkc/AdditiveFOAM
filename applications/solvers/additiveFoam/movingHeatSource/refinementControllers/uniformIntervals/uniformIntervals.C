@@ -68,9 +68,7 @@ Foam::refinementControllers::uniformIntervals::uniformIntervals
     updateTime_(0.0),
     endTime_(0.0)
 {
-    // TODO: interval time and update time need to be relative to start time
-
-    // set end time for AMR update to minimum of solution time and max beam time
+    //- Set AMR update end time to minimum of solution time and max beam time
     forAll(sources_, i)
     {
         endTime_ = max(sources_[i].beam().endTime(), endTime_);
@@ -80,7 +78,7 @@ Foam::refinementControllers::uniformIntervals::uniformIntervals
 
     Info << "endTime: " << endTime_ << endl;
 
-    // set interval time to the number of intervals between start and end
+    //- Set interval time to the number of intervals between start and end
     intervalTime_ =
         max(0, endTime_ - mesh.time().startTime().value()) / intervals_;
 
@@ -96,8 +94,7 @@ bool Foam::refinementControllers::uniformIntervals::update()
 {
     if ((updateTime_ - mesh_.time().value()) < small)
     {
-        // update refinement index and next refinement time
-        lastRefinementIndex_ = mesh_.time().timeIndex();
+        // Update next refinement time
         updateTime_ = mesh_.time().value() + intervalTime_;
 
         //- Set initial refinement field in base class
@@ -132,8 +129,8 @@ bool Foam::refinementControllers::uniformIntervals::update()
         }
 
         //- Update refinement marker field:
-        //-   1. March along beam paths until next update time or path end
-        //-   2. Mark overlap cells for refinement.
+        //    1. march along beam paths until next update time or path end
+        //    2. mark overlap cells for refinement.
         forAll(sources_, i)
         {
             const movingBeam& beam_ = sources_[i].beam();
@@ -165,12 +162,12 @@ bool Foam::refinementControllers::uniformIntervals::update()
                 }
                 refinementField_.correctBoundaryConditions();
 
-                // Calculate time step required to resolve beam motion on mesh
+                //- Calculate time step required to resolve beam motion on mesh
                 label index_ = beam_.findIndex(time_);
                 segment path_ = beam_.getSegment(index_);
                 scalar timeToNextPath_ = path_.time() - time_;
 
-                // if the path end time is directly hit, step to next path
+                //- If the path end time is directly hit, step to next path
                 while (mag(timeToNextPath_) < small)
                 {
                     index_ = index_ + 1;
