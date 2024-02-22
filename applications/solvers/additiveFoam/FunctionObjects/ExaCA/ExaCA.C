@@ -114,7 +114,6 @@ bool Foam::functionObjects::ExaCA::execute()
         Tp.write();
     }
 
-    //Info << gMax(T_()) << endl;
     return true;
 }
 
