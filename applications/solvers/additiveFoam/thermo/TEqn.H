@@ -20,7 +20,7 @@
         );
     }
 
-    //- solve thermodynamic coupling using root-finding algorithm
+    //- Solve thermodynamic coupling using root-finding algorithm
     volScalarField dFdT
     (
         IOobject
@@ -42,7 +42,7 @@
     {
         #include "thermo/thermoSource.H"
 
-        //- solve the energy equation
+        //- Solve the energy equation
         solve
         (
             TEqn
@@ -53,11 +53,11 @@
 
         T.correctBoundaryConditions();
 
-        //- update solid fraction via Taylor's series expansion
+        //- Update solid fraction via Taylor's series expansion
         alpha1 = min(max(alpha10 + dFdT*(T - T0), 0.0), 1.0);
         alpha1.correctBoundaryConditions();
 
-        //- check convergence of iterative procedure
+        //- Check convergence of iterative procedure
         scalar residual =
             gMax(mag(alpha1.internalField() - alpha10.internalField())());
 
@@ -69,4 +69,13 @@
             break;
         }
     }
+
+    //- Set solid fraction consistent with temperature
+    forAll(mesh.cells(), cellI)
+    {
+        scalar alpha1_ = interpolateXY(T[cellI], thermo.x(), thermo.y());
+        alpha1[cellI] = min(max(alpha1_, 0.0), 1.0);
+    }
+
+    alpha1.correctBoundaryConditions();
 }

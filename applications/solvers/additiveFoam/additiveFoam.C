@@ -96,16 +96,13 @@ int main(int argc, char *argv[])
         #include "CourantNo.H"
         #include "setDeltaT.H"
 
-        timer.start("Heat Source");
+        timer.start("Heat Source Update");
         sources.update();
-        timer.stop("Heat Source");
+        timer.stop("Heat Source Update");
         
-        timer.start("Refinement Control and Mesh Update");
-        if (sources.refinementControl().update())
-        {
-            mesh.update();
-        }
-        timer.stop("Refinement Control and Mesh Update");
+        timer.start("Mesh Update");
+        mesh.update();
+        timer.stop("Mesh Update");
         
         runTime++;
 
@@ -124,9 +121,9 @@ int main(int argc, char *argv[])
             }
         }
 
-        timer.start("TEqn");
+        timer.start("Thermo Solve");
         #include "thermo/TEqn.H"
-        timer.stop("TEqn");
+        timer.stop("Thermo Solve");
         
         ExaCA.update();
 

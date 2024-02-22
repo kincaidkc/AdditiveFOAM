@@ -73,36 +73,27 @@ protected:
     
         //- PtrList to heatSourceModels
         const PtrList<heatSourceModel>& sources_;
-        
-        //- Main heat source dictionary
-        const dictionary& heatSourceDict_;
-        
+
         //- Pointer to mesh information
         const fvMesh& mesh_;
-        
+
+        //- Main heat source dictionary
+        const dictionary& heatSourceDict_;
+                
         //- Sub-dictionary for refinementController entries
         dictionary refinementDict_;
         
         //- Switch for refinementField generation
         const bool refine_;
-        
-        //- Marker field for refinement operations
-        volScalarField refinementField_;
-        
-        //- Switch to fully resolve melt pool
-        const bool resolveTail_;
-        
-        //- Time after solidification to maintain resolved mesh
-        const scalar persistence_;
-        
-        //- Time field to track solidification time
-        volScalarField solidificationTime_;
-        
-        //- Time index of last refinement operation
-        label lastRefinementIndex_;
-        
+                
         //- Number of refinement levels
         label nLevels_;
+
+        //- Temperature above which refinement occurs
+        scalar refinementTemperature_;
+
+        //- Marker field for refinement operations
+        volScalarField refinementField_;
 
 public:
 
@@ -164,8 +155,8 @@ public:
             return refinementField_;
         };
         
-        //- Initialize refinement field from melt pool data
-        virtual void initializeRefinementField();
+        //- Set refinementField using temperature constraints
+        virtual void setRefinementField();
     
         //- Update refinementField and return true at specified time
         virtual bool update() = 0;

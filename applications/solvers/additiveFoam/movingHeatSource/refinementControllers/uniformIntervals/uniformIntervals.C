@@ -35,7 +35,12 @@ namespace Foam
 namespace refinementControllers
 {
     defineTypeNameAndDebug(uniformIntervals, 0);
-    addToRunTimeSelectionTable(refinementController, uniformIntervals, dictionary);
+    addToRunTimeSelectionTable
+    (
+        refinementController,
+        uniformIntervals,
+        dictionary
+    );
 }
 }
 
@@ -49,15 +54,37 @@ Foam::refinementControllers::uniformIntervals::uniformIntervals
 )
 :
     refinementController(typeName, sources, dict, mesh),
-    
     coeffs_(refinementDict_.optionalSubDict(typeName + "Coeffs")),
-    intervals_(coeffs_.lookup<int>("intervals")),
-    boundingBox_(coeffs_.lookupOrDefault<scalar>("boundingBox", 3)),
-    intervalSize_(mesh_.time().endTime().value() / intervals_),
-    updateTime_(0.0)
+    intervals_(coeffs_.lookup<label>("intervals")),
+    boundingBox_
+    (
+        coeffs_.lookupOrDefault<boundBox>
+        (
+            "boundingBox",
+            boundBox(point::max, point::min)
+        )
+    ),
+    intervalTime_(0.0),
+    updateTime_(0.0),
+    endTime_(0.0)
 {
-    //- Divide bounding box by 2, since beam dimensions are returned as D2sigma
-    boundingBox_ /= 2.0;
+    //- Set AMR update end time to minimum of solution time and max beam time
+    forAll(sources_, i)
+    {
+        endTime_ = max(sources_[i].beam().endTime(), endTime_);
+    }
+
+    endTime_ = min(endTime_, mesh.time().endTime().value());
+
+    Info << "endTime: " << endTime_ << endl;
+
+    //- Set interval time to the number of intervals between start and end
+    intervalTime_ =
+        max(0, endTime_ - mesh.time().startTime().value()) / intervals_;
+
+    Info<< "AMR time interval: " << intervalTime_ << " s" << endl;
+
+    Info<< "refinement bounding box: " << boundingBox_ << endl;
 }
 
 
@@ -65,137 +92,107 @@ Foam::refinementControllers::uniformIntervals::uniformIntervals
 
 bool Foam::refinementControllers::uniformIntervals::update()
 {
-    //- Update refinement field at update time
-    if ((refinementController::update())
-        &&
-        (mesh_.time().value() >= updateTime_))
+    if ((updateTime_ - mesh_.time().value()) < small)
     {
-        //- Update refinement index
-        lastRefinementIndex_ = mesh_.time().timeIndex();
-        
-        //- Call an extra mesh refinement on the first time
-        if (mesh_.time().timeIndex() == 0)
+        // Update next refinement time
+        updateTime_ = mesh_.time().value() + intervalTime_;
+
+        //- Set initial refinement field in base class
+        refinementController::setRefinementField();
+
+        if ((endTime_ - mesh_.time().value()) < small)
         {
-            lastRefinementIndex_ = 1;
+            Info << "continuing AMR checks for possible mesh coarsening" << endl;
+            return true;
         }
-        
-        //- Initialize refinement marker field in base class
-        refinementController::initializeRefinementField();
-    
-        //- Update next refinement time
-        const scalar currTime = mesh_.time().value();
-        updateTime_ = currTime + intervalSize_;
-        
-        //- Buffer for bounding box calculations
-        const vector extend = 1e-10 * vector::one;
-        
+
+        //- Calculate the bounding box for each cell
+        List<treeBoundBox> cellBbs(mesh_.nCells());    
         const pointField& points = mesh_.points();
-        
-        //- Update refinement marker field
-        forAll(sources_, i)
-        {        
-            //- Create dummy time for forward march scheme
-            scalar beamTime = currTime;
-            
-            //- March along beam path until next update time is reached
-            while (beamTime < updateTime_)
+        const vector extend = 1e-10 * vector::one;
+
+        forAll(mesh_.cells(), celli)
+        {
+            treeBoundBox cellBb(point::max, point::min);
+
+            const labelList& vertices = mesh_.cellPoints()[celli];
+
+            forAll(vertices, j)
             {
-                //- Check if path is still active
-                if (!sources_[i].beam().activePath(beamTime))
-                {
-                    break;
-                }
-                
-                //- Mark cells near beam at current time/location for
-                //  refinement
-                vector beamDims = sources_[i].dimensions();
-                vector currPos = sources_[i].beam().position(beamTime);
+                cellBb.min()
+                    = min(cellBb.min(), points[vertices[j]] - extend);
+                cellBb.max()
+                    = max(cellBb.max(), points[vertices[j]] + extend);
+            }
+
+            cellBbs[celli] = cellBb;
+        }
+
+        //- Update refinement marker field:
+        //    1. march along beam paths until next update time or path end
+        //    2. mark overlap cells for refinement.
+        forAll(sources_, i)
+        {
+            const movingBeam& beam_ = sources_[i].beam();
+            
+            scalar time_ = mesh_.time().value();
+
+            vector offset_ = 1.5*sources_[i].dimensions();
+
+            while ((min(beam_.endTime(), updateTime_) - time_) > small)
+            {
+                vector position_ = beam_.position(time_);
+
                 treeBoundBox beamBb
                 (
-                    currPos - boundingBox_ * beamDims,
-                    currPos + boundingBox_ * beamDims
+                    position_ - min(offset_, boundingBox_.min()),
+                    position_ + max(offset_, boundingBox_.max())
                 );
                 
-                forAll(mesh_.C(), celli)
+                forAll(mesh_.cells(), celli)
                 {
-                    //- Don't redo checks if cell is already marked
-                    if (refinementField_[celli] > 0.0)
+                    if (refinementField_[celli] > 0)
                     {
-                        continue;
+                        // Do nothing, cell already marked for refiment
                     }
-                    
-                    treeBoundBox cellBb(point::max, point::min);
-                    
-                    const labelList& vertices = mesh_.cellPoints()[celli];
-                    
-                    forAll(vertices, j)
+                    else if (cellBbs[celli].overlaps(beamBb))
                     {
-                        cellBb.min()
-                            = min(cellBb.min(), points[vertices[j]] - extend);
-                        cellBb.max()
-                            = max(cellBb.max(), points[vertices[j]] + extend);
-                    }
-                    
-                    if (cellBb.overlaps(beamBb))
-                    {
-                        refinementField_[celli] = 1.0;
+                        refinementField_[celli] = 1;
                     }
                 }
-            
-                //- Initialize time marching step size
-                scalar beamDt = 0.0;
-                
-                //- Calculate max beam timestep based on velocity for
-                //  moving beams, or time until next path for stationary
-                //scalar beamMode = sources_[i].beam().mode(beamTime);
-                scalar beamMode = sources_[i].beam().mode(beamTime);
-                scalar timeToNext = sources_[i].beam().timeToNextPath(beamTime);
-                
-                if (beamMode == 0.0)
+                refinementField_.correctBoundaryConditions();
+
+                //- Calculate time step required to resolve beam motion on mesh
+                label index_ = beam_.findIndex(time_);
+                segment path_ = beam_.getSegment(index_);
+                scalar timeToNextPath_ = path_.time() - time_;
+
+                //- If the path end time is directly hit, step to next path
+                while (mag(timeToNextPath_) < small)
                 {
-                    beamDt = sources_[i].D2sigma()
-                             / max(sources_[i].beam().parameter(beamTime), SMALL);
-                             
-                    //- Ensure end of path is refined
-                    if (timeToNext > 1e-6)
-                    {         
-                        beamDt = min(beamDt, timeToNext - 1e-8);
-                    }
+                    index_ = index_ + 1;
+                    path_ = beam_.getSegment(index_);
+                    timeToNextPath_ = path_.time() - time_;
                 }
-                
-                else
+
+                scalar dt_ = min(timeToNextPath_, max(0, updateTime_ - time_));
+
+                if (path_.mode() == 0)
                 {
-                    beamDt = timeToNext + 1e-8; // this extra tolerance is needed 
-                                                // so that mode 0 paths don't get
-                                                // skipped following a mode 1 path
+                    const scalar scanTime_ =
+                        sources_[i].D2sigma() / path_.parameter();
+
+                    dt_ = min(timeToNextPath_, scanTime_);
                 }
-                
-                //- Ensure end of interval gets refined
-                beamTime += beamDt;
-                
-                if (abs(beamTime - updateTime_) > 1e-6)
-                {
-                    beamTime = min(beamTime, updateTime_ - 1e-8);
-                }
-            }            
+
+                time_ += dt_;
+            }
         }
         
-        refinementField_ = pos(refinementField_);
-        
-        //- Return true to call mesh.update()
-        return true;
+        Info << "Updating AMR field to trigger refinement" << endl;
     }
-    
-    //- Perform additional refinements after field update to achieve full resolution
-    else if (lastRefinementIndex_ + nLevels_ > mesh_.time().timeIndex())
-    {
-        return true;
-    }
-    
-    else
-    {
-        return false;
-    }
+
+    return true;
 }
 
 

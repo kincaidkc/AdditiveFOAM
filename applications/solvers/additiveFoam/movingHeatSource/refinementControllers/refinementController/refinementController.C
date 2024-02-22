@@ -82,10 +82,27 @@ Foam::refinementController::refinementController
     IOdictionary(createIOobject(dict, mesh)),
 
     sources_(sources),
-    heatSourceDict_(dict),
     mesh_(mesh),
+    heatSourceDict_(dict),
     refinementDict_(heatSourceDict_.optionalSubDict("refinementControl")),
-    refine_((type != "none") ? refinementDict_.lookup<bool>("refine") : false),
+    refine_
+    (
+        (type != "none")
+      ? refinementDict_.lookup<bool>("refine")
+      : false
+    ),
+    nLevels_
+    (
+        (type != "none")
+      ? refinementDict_.lookup<label>("nLevels")
+      : 0
+    ),
+    refinementTemperature_
+    (
+        (type != "none")
+      ? refinementDict_.lookupOrDefault<scalar>("refinementTemperature", GREAT)
+      : GREAT
+    ),
     refinementField_
     (
         IOobject
@@ -98,82 +115,32 @@ Foam::refinementController::refinementController
         ),
         mesh_,
         dimensionedScalar(dimless, 0.0)
-    ),
-    resolveTail_(refine_ ? refinementDict_.lookupOrDefault<bool>("resolveTail", false) : false),
-    persistence_(refine_ ? refinementDict_.lookupOrDefault<scalar>("persistence", 0.0) : 0.0),
-    solidificationTime_
-    (
-        IOobject
-        (
-            "solidificationTime",
-            mesh_.time().timeName(),
-            mesh_,
-            persistence_ > 0.0
-                ? IOobject::READ_IF_PRESENT : IOobject::NO_READ,
-            persistence_ > 0.0
-                ? IOobject::AUTO_WRITE : IOobject::NO_WRITE
-        ),
-        mesh_,
-        dimensionedScalar(dimless, -GREAT)
-    ),
-    lastRefinementIndex_(0),
-    nLevels_((type != "none") ? refinementDict_.lookup<label>("nLevels") : 0)
+    )
 {
+    Info << "refinement temperature: " << refinementTemperature_ << endl;
 }
 
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-bool Foam::refinementController::update()
+void Foam::refinementController::setRefinementField()
 {
-    //- Update solidification time field at every time step
-    if (persistence_ > 0.0)
+    // TODO: Add gradient based criteria (if necessary)
+    const volScalarField& T = mesh_.lookupObject<volScalarField>("T");
+
+    forAll(mesh_.cells(), celli)
     {
-        const scalar currTime = mesh_.time().value();
-    
-        const volScalarField& alphaSol
-            = mesh_.lookupObject<volScalarField>("alpha.solid");
-            
-        const volScalarField& alphaSol0 = alphaSol.oldTime();
-        
-        forAll(mesh_.C(), celli)
+        if (T[celli] >= refinementTemperature_)
         {
-            if ((alphaSol[celli] > 0.99) && (alphaSol0[celli] < 0.99))
-            {
-                solidificationTime_[celli] = currTime;
-            }
+            refinementField_[celli] = 1;
+        }
+        else
+        {
+            refinementField_[celli] = 0;
         }
     }
-    
-    return true;
-}
 
-void Foam::refinementController::initializeRefinementField()
-{
-    //- Initialize refinement field to capture melt pool
-    if (resolveTail_)
-    {
-        const volScalarField& alphaSol
-            = mesh_.lookupObject<volScalarField>("alpha.solid");
-        
-        refinementField_ = pos(1.0 - alphaSol);
-        
-        if (persistence_ > 0.0)
-        {
-            const scalar currTime = mesh_.time().value();
-            
-            //- Ensure recently solidified regions stay refined
-            //  for persistence time
-            refinementField_
-                += pos(solidificationTime_ + persistence_ - currTime);
-        }        
-    }
-    
-    //- Reset refinement field if no tail capturing is desired
-    else
-    {
-        refinementField_ = dimensionedScalar(dimless, 0.0);
-    }
+    refinementField_.correctBoundaryConditions();
 }
 
 bool Foam::refinementController::read()

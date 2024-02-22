@@ -29,7 +29,7 @@ deltaT          1e-7;
 
 writeControl    adjustableRunTime;
 
-writeInterval   0.001;
+writeInterval   0.0005;
 
 purgeWrite      0;
 
@@ -50,4 +50,10 @@ adjustTimeStep  yes;
 maxCo           0.5;
 maxDi           1;
 maxAlphaCo      1;
+/*
+functions
+{
+    #includeFunc ExaCA
+}
+*/
 // ************************************************************************* //
