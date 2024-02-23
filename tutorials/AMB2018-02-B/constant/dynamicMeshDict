@@ -15,7 +15,8 @@ FoamFile
 
 topoChanger
 {
-    type    refiner;
+    type        none;
+    //type    refiner;
 
     libs    ("libfvMeshTopoChangers.so");
 
@@ -45,7 +46,8 @@ topoChanger
 
 distributor
 {
-    type            distributor;
+    type            none;
+    //type            distributor;
 
     libs            ("libfvMeshDistributors.so");
 

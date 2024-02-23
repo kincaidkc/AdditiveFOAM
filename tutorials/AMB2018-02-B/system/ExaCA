@@ -10,32 +10,6 @@ ExaCA
 {
     type ExaCA;
     libs ("libExaCAFunctionObject.so");
-
-    scalarData      5;
-    labelData      1;
-
-/*
-    writeControl    timeStep;
-    writeInterval   1;
-
-    setFormat csv;
-
-    interpolationScheme pointMVC;
-
-    sets
-    (
-        data
-        {
-            type        boxUniform;
-            axis        xyz;
-            box         (0 -0.0001 -0.0002) (0.002 0.0001 0);
-            nPoints     (10 10 10);
-        }
-
-    );
-
-    fields (T);
-*/
 }
 
 // *********************************************************************** //

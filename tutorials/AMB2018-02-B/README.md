@@ -8,9 +8,7 @@ The standard tutorial uses the `superGaussian` heat source model and can be run 
 The AMR tutorial incorporates adaptive mesh refinement via with the `refinementController` class implemented in AdditiveFOAM. For CPU load-balanced AMR, the [Zoltan](https://sandialabs.github.io/Zoltan) must be compiled with OpenFOAM. This can be accomplished by rerunning the ThirdParty Allwmake script with the [Zoltan 3.90 tarball](https://github.com/sandialabs/Zoltan/archive/refs/tags/v3.90.tar.gz) present in the ThirdParty directory.
 
 In addition to compiling Zoltan, the following changes must be made from the standard tutorial:
-1) The `constant/dynamicMeshDictAMR` file should be renamed to `constant/dynamicMeshDict`:
-
-`$ cp -r constant/dynamicMeshDictAMR constant/dynamicMeshDict`
+1) In the `constant/dynamicMeshDict` file, change the `topoChange` type from `none` to `refiner` and the `distributor` type from `none` to `distributor`.
 
 2) In the `constant/heatSourceModels` file, change the `refinementController` entry from `none` to `uniformIntervals`.
 
