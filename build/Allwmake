@@ -1,0 +1,92 @@
+#!/bin/sh
+cd ${0%/*} || exit 1    # Run from this directory
+
+# Parse arguments for library compilation
+. wmake/scripts/AllwmakeParseArguments
+
+# Perform various checks
+wmakeCheckPwd "$WM_PROJECT_DIR" || {
+    echo "Allwmake error: Current directory is not \$WM_PROJECT_DIR"
+    echo "    The environment variables are inconsistent with the installation."
+    echo "    Check the OpenFOAM entries in your dot-files and source them."
+    exit 1
+}
+
+[ -n "$FOAM_EXT_LIBBIN" ] || {
+    echo "Allwmake error: FOAM_EXT_LIBBIN not set"
+    echo "    Check the OpenFOAM entries in your dot-files and source them."
+    exit 1
+}
+
+# Compile wmake support applications
+(cd wmake/src && make)
+
+# Compile ThirdParty libraries and applications
+if [ -d "$WM_THIRD_PARTY_DIR" ]
+then
+    #$WM_THIRD_PARTY_DIR/Allwmake
+    echo "Minimal AdditiveFOAM build: skipping ThirdParty."
+else
+    echo "Allwmake: no ThirdParty directory found - skipping"
+fi
+
+##############################################################
+#            This section taken from src/Allwmake            #
+##############################################################
+
+# Compile OpenFOAM libraries and applications
+#src/Allwmake $targetType $*
+cd src
+
+# Only required libraries for AdditiveFOAM are:
+# 1. finiteVolume
+# 2. dynamicMesh
+# 3. meshTools
+# We will build only these libraries and their dependencies,
+# as well as libraries for tools such as blockMesh, AMR,
+# and dynamic load balancing
+
+# Update OpenFOAM version strings if required
+wmakePrintBuild -check || wrmo OpenFOAM/global/global.o 2>/dev/null
+
+Pstream/Allwmake $targetType $*
+
+OSspecific/${WM_OSTYPE:-POSIX}/Allwmake $targetType $*
+wmake $targetType OpenFOAM
+
+wmake $targetType fileFormats
+wmake $targetType surfMesh
+wmake $targetType triSurface
+wmake $targetType genericPatches
+wmake $targetType meshTools
+
+dummyThirdParty/Allwmake $targetType $*
+
+wmake $targetType finiteVolume
+
+wmake $targetType genericPatchFields
+
+wmake $targetType mesh/extrudeModel
+wmake $targetType dynamicMesh
+
+fvMeshTopoChangers/Allwmake $targetType $*
+wmake $targetType fvMeshDistributors
+
+wmake $targetType mesh/blockMesh
+
+##############################################################
+#       This section taken from applications/Allwmake        #
+##############################################################
+
+# Compile OpenFOAM libraries and applications
+#applications/Allwmake $targetType $*
+cd ../applications
+
+# Build blockMesh, parallel processing utilities
+
+wmake $targetType utilities/mesh/generation/blockMesh
+
+wmake $targetType utilities/parallelProcessing/decomposePar
+wmake $targetType utilities/parallelProcessing/reconstructPar
+
+#------------------------------------------------------------------------------
