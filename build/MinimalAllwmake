@@ -1,8 +1,12 @@
 #!/bin/sh
 cd ${0%/*} || exit 1    # Run from this directory
 
+echo "Minimal make script"
+
 # Parse arguments for library compilation
-. wmake/scripts/AllwmakeParseArguments
+#. wmake/scripts/AllwmakeParseArguments
+
+echo "Flag 2"
 
 # Perform various checks
 wmakeCheckPwd "$WM_PROJECT_DIR" || {
@@ -18,25 +22,27 @@ wmakeCheckPwd "$WM_PROJECT_DIR" || {
     exit 1
 }
 
+echo "Flag 1"
+
 # Compile wmake support applications
 (cd wmake/src && make)
 
 # Compile ThirdParty libraries and applications
 if [ -d "$WM_THIRD_PARTY_DIR" ]
 then
-    #$WM_THIRD_PARTY_DIR/Allwmake
     echo "Performing minimal ThirdParty Allwmake..."
     $WM_THIRD_PARTY_DIR/MinimalThirdPartyAllwmake
 else
     echo "Allwmake: no ThirdParty directory found - skipping"
 fi
 
+echo "Flag 2"
+
 ##############################################################
 #            This section taken from src/Allwmake            #
 ##############################################################
 
 # Compile OpenFOAM libraries and applications
-#src/Allwmake $targetType $*
 cd src
 
 # Only required libraries for AdditiveFOAM are:
@@ -50,30 +56,33 @@ cd src
 # Update OpenFOAM version strings if required
 wmakePrintBuild -check || wrmo OpenFOAM/global/global.o 2>/dev/null
 
-Pstream/Allwmake $targetType $*
+Pstream/Allwmake -j $targetType $*
 
-OSspecific/${WM_OSTYPE:-POSIX}/Allwmake $targetType $*
-wmake $targetType OpenFOAM
+OSspecific/${WM_OSTYPE:-POSIX}/Allwmake -j $targetType $*
+wmake -j $targetType OpenFOAM
 
-wmake $targetType fileFormats
-wmake $targetType surfMesh
-wmake $targetType triSurface
-wmake $targetType genericPatches
-wmake $targetType meshTools
+wmake -j $targetType fileFormats
+wmake -j $targetType surfMesh
+wmake -j $targetType triSurface
+wmake -j $targetType genericPatches
+wmake -j $targetType meshTools
 
-dummyThirdParty/Allwmake $targetType $*
+dummyThirdParty/Allwmake -j $targetType $*
 
-wmake $targetType finiteVolume
+wmake -j $targetType finiteVolume
+wmake -j $targetType lagrangian/basic
+wmake -j $targetType genericPatchFields
 
-wmake $targetType genericPatchFields
+wmake -j $targetType mesh/extrudeModel
+wmake -j $targetType dynamicMesh
 
-wmake $targetType mesh/extrudeModel
-wmake $targetType dynamicMesh
+parallel/Allwmake -j $targetType $*
 
-fvMeshTopoChangers/Allwmake $targetType $*
-wmake $targetType fvMeshDistributors
+wmake -j $targetType fvMeshStitchers
+fvMeshTopoChangers/Allwmake -j $targetType $*
+wmake -j $targetType fvMeshDistributors
 
-wmake $targetType mesh/blockMesh
+wmake -j $targetType mesh/blockMesh
 
 ##############################################################
 #       This section taken from applications/Allwmake        #
@@ -85,9 +94,9 @@ cd ../applications
 
 # Build blockMesh, parallel processing utilities
 
-wmake $targetType utilities/mesh/generation/blockMesh
+wmake -j $targetType utilities/mesh/generation/blockMesh
 
-wmake $targetType utilities/parallelProcessing/decomposePar
-wmake $targetType utilities/parallelProcessing/reconstructPar
+wmake -j $targetType utilities/parallelProcessing/decomposePar
+wmake -j $targetType utilities/parallelProcessing/reconstructPar
 
 #------------------------------------------------------------------------------
