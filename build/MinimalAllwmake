@@ -25,7 +25,8 @@ wmakeCheckPwd "$WM_PROJECT_DIR" || {
 if [ -d "$WM_THIRD_PARTY_DIR" ]
 then
     #$WM_THIRD_PARTY_DIR/Allwmake
-    echo "Minimal AdditiveFOAM build: skipping ThirdParty."
+    echo "Performing minimal ThirdParty Allwmake..."
+    $WM_THIRD_PARTY_DIR/MinimalThirdPartyAllwmake
 else
     echo "Allwmake: no ThirdParty directory found - skipping"
 fi
