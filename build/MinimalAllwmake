@@ -1,13 +1,6 @@
 #!/bin/sh
 cd ${0%/*} || exit 1    # Run from this directory
 
-echo "Minimal make script"
-
-# Parse arguments for library compilation
-#. wmake/scripts/AllwmakeParseArguments
-
-echo "Flag 2"
-
 # Perform various checks
 wmakeCheckPwd "$WM_PROJECT_DIR" || {
     echo "Allwmake error: Current directory is not \$WM_PROJECT_DIR"
@@ -22,8 +15,6 @@ wmakeCheckPwd "$WM_PROJECT_DIR" || {
     exit 1
 }
 
-echo "Flag 1"
-
 # Compile wmake support applications
 (cd wmake/src && make)
 
@@ -35,8 +26,6 @@ then
 else
     echo "Allwmake: no ThirdParty directory found - skipping"
 fi
-
-echo "Flag 2"
 
 ##############################################################
 #            This section taken from src/Allwmake            #
@@ -99,4 +88,5 @@ wmake -j $targetType utilities/mesh/generation/blockMesh
 wmake -j $targetType utilities/parallelProcessing/decomposePar
 wmake -j $targetType utilities/parallelProcessing/reconstructPar
 
+wmake -j $targetType utilities/miscellaneous/foamDictionary
 #------------------------------------------------------------------------------
