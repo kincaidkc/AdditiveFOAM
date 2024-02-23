@@ -42,6 +42,12 @@ cd src
 # as well as libraries for tools such as blockMesh, AMR,
 # and dynamic load balancing
 
+# Users not wishing to use AMR can comment out the following 
+# wmake commands below:
+# 1. fvMeshStitchers
+# 2. fvMeshTopoChangers
+# 3. fvMeshDistributors
+
 # Update OpenFOAM version strings if required
 wmakePrintBuild -check || wrmo OpenFOAM/global/global.o 2>/dev/null
 
