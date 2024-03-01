@@ -56,25 +56,34 @@ Foam::refinementControllers::ROAMR::ROAMR
     reduce(totalCells, sumOp<label>());
     scalar vAvg = gSum(mesh_.V()) / totalCells;
     
-    //- Calculate cross-section of bounding box
-    point bbMin = boundingBox_.min();
-    point bbMax = boundingBox_.max();
-    
-    scalar bbMaxDim = max(bbMax[0] - bbMin[0], bbMax[1] - bbMin[1]);
-    
-    scalar bbArea = bbMaxDim * abs(bbMax[2] - bbMin[2]) * sources_.size();
-    
-    //- Find longest path
+    //- Find longest path and estimate total scan area
     scalar maxLen = 0.0;
+    scalar maxDim = 0.0;
+    scalar scanArea = 0.0;
 
     forAll(sources_, i)
     {
         maxLen = max(sources_[i].beam().length(), maxLen);
+        
+        treeBoundBox beamBb
+        (
+            min(vector::zero, boundingBox_.min()),
+            max(1.5 * sources_[i].dimensions(), boundingBox_.max())
+        );
+        
+        point bbMin = beamBb.min();
+        point bbMax = beamBb.max();
+        
+        scalar bbMaxDim = max(bbMax[0] - bbMin[0], bbMax[1] - bbMin[1]);
+
+        maxDim = max(maxDim, bbMaxDim);
+        
+        scanArea += 4.0 * bbMaxDim * Foam::pow(Foam::pow(bbMax[2] - bbMin[2], 2.0), 0.5);
     }
 
     //- Calculate maximum number of intervals or shortest interval
     //  size to maintain at least 1 bounding box between updates
-    scalar maxIntervals = maxLen / bbMaxDim;
+    scalar maxIntervals = maxLen / maxDim;
     minIntervalTime_ = endTime_ / maxIntervals;
 
     //- Calculate number of intervals to optimize cells per processor
@@ -82,7 +91,7 @@ Foam::refinementControllers::ROAMR::ROAMR
 
     if (targetCells > totalCells)
     {
-        intervals_ = maxLen * bbArea / vAvg
+        intervals_ = maxLen * scanArea / vAvg
                      / (targetCells - totalCells)
                      * (Foam::pow(2.0, 3.0 * nLevels_) - 1.0);
     }
