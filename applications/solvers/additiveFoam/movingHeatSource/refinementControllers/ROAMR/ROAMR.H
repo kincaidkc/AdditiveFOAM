@@ -9,38 +9,31 @@
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
-
     OpenFOAM is free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
-
     OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
     ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
     FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
     for more details.
-
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
-
 Class
-    Foam::refinementControllers::uniformIntervals
-
+    Foam::refinementControllers::ROAMR
 Description
     This refinement control scheme divides the simulation into an even
     number of intervals equal to the simulation end time divided by the
     number of intervals. Refinement for each beam is carried out on each
     interval.
-
 SourceFiles
-    uniformIntervals.C
-
+    ROAMR.C
 \*---------------------------------------------------------------------------*/
 
-#ifndef uniformIntervals_H
-#define uniformIntervals_H
+#ifndef ROAMR_H
+#define ROAMR_H
 
-#include "refinementController.H"
+#include "uniformIntervals.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -50,58 +43,44 @@ namespace refinementControllers
 {
 
 /*---------------------------------------------------------------------------*\
-                             Class uniformIntervals
+                             Class ROAMR
 \*---------------------------------------------------------------------------*/
 
-class uniformIntervals
+class ROAMR
 :
-    public refinementController
+    public uniformIntervals
 {
     // Private Data
-    
+
         //- Dictionary
         dictionary coeffs_;
-        
-protected:
 
-    //- Protected data
-        
-        //- Number of intervals
-        scalar intervals_;
-        
-        //- User-defined bounding box for refinement around moving beam
-        //- Defaults to an inverted bounding box that is updated for each beam
-        boundBox boundingBox_;
-        
-        //- Time duration of each interval
-        scalar intervalTime_;
-        
-        //- Time for next update
-        scalar updateTime_;
+        //- Target cells per processor (default 20k)
+        int cellsPerProc_;
 
-        //- Last refinement time, beyond which, no refinement occurs
-        scalar endTime_;       
+        //- Minimum interval time to maintain at least
+        //  D4sigma between refinements
+        scalar minIntervalTime_;
 
 public:
 
     //- Runtime type information
-    TypeName("uniformIntervals");
+    TypeName("ROAMR");
 
 
     // Constructors
 
         //- Construct from components
-        uniformIntervals
+        ROAMR
         (
             const PtrList<heatSourceModel>& sources,
             const dictionary& dict,
-            const fvMesh& mesh,
-            const bool& roamr = false
+            const fvMesh& mesh
         );
 
 
     //- Destructor
-    virtual ~uniformIntervals()
+    virtual ~ROAMR()
     {}
 
 

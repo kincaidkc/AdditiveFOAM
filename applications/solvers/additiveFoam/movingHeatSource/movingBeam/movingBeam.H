@@ -88,6 +88,9 @@ private:
         //- End time of path
         scalar endTime_;
         
+        //- Total length of path
+        scalar length_;
+        
         //- Time step used for heat source integration
         scalar deltaT_;
         
@@ -165,6 +168,11 @@ public:
         inline scalar deltaT() const
         {
             return deltaT_;
+        }
+        
+        inline scalar length() const
+        {
+            return length_;
         }
 
         //- Return path end time

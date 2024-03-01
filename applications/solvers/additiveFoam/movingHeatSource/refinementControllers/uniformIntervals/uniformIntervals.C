@@ -50,12 +50,14 @@ Foam::refinementControllers::uniformIntervals::uniformIntervals
 (
     const PtrList<heatSourceModel>& sources,
     const dictionary& dict,
-    const fvMesh& mesh
+    const fvMesh& mesh,
+    const bool& roamr
 )
 :
     refinementController(typeName, sources, dict, mesh),
-    coeffs_(refinementDict_.optionalSubDict(typeName + "Coeffs")),
-    intervals_(coeffs_.lookup<label>("intervals")),
+    coeffs_(roamr ? refinementDict_.optionalSubDict("ROAMRCoeffs")
+                  : refinementDict_.optionalSubDict(typeName + "Coeffs")),
+    intervals_(roamr ? 1.0 : coeffs_.lookup<scalar>("intervals")),
     boundingBox_
     (
         coeffs_.lookupOrDefault<boundBox>
