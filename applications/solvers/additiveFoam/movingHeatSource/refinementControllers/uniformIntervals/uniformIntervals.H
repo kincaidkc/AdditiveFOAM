@@ -108,7 +108,7 @@ public:
     // Member Functions
 
         //- Update the refinement marker field and return true at each interval
-        virtual bool update();
+        virtual bool update(const bool& force = false);
 
         //- Read the heatSourceProperties dictionary
         virtual bool read();

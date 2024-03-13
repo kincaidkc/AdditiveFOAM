@@ -110,12 +110,18 @@ Foam::refinementControllers::ROAMR::ROAMR
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-bool Foam::refinementControllers::ROAMR::update()
+bool Foam::refinementControllers::ROAMR::update(const bool& force)
 {
-    if ((updateTime_ - mesh_.time().value()) < small)
+    //- Update if mesh time equals update time
+    //  OR if time index is equal to the max refinement level.
+    //  This second condition adjusts the mesh after the guess at the first
+    //  refinement interval size to prevent an overly long first interval.
+    if ((updateTime_ - mesh_.time().value() < small)
+        ||
+        (mesh_.time().timeIndex() == nLevels_ + 1))
     {
-        //- Don't rescale in first few iterations
-        if (mesh_.time().timeIndex() > nLevels_)
+        //- Guard against rescaling until full refinement is reached
+        if (mesh_.time().timeIndex() >= nLevels_ + 1)
         {
             //- Scale interval size based on current cells/proc
             label totalCells = mesh_.nCells();
@@ -126,7 +132,7 @@ bool Foam::refinementControllers::ROAMR::update()
             Info << "Current interval time: " << intervalTime_ << endl;
 
             //- Rescale interval time
-            scalar scale = min(1.1, max(0.9, cellsPerProc_ / currCellsPerProc));
+            scalar scale = min(2.0, max(0.5, cellsPerProc_ / currCellsPerProc));
             
             intervalTime_ *= scale;
             
@@ -136,8 +142,8 @@ bool Foam::refinementControllers::ROAMR::update()
             Info << "New interval time: " << intervalTime_ << endl;
         }
 
-        //- Update refinement field using uniform intervals functions
-        uniformIntervals::update();
+        //- Force update refinement field using uniform intervals functions
+        uniformIntervals::update(true);
     }
 
     return true;

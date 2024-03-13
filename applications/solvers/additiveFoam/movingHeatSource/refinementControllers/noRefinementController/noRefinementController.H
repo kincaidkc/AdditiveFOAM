@@ -83,7 +83,7 @@ public:
     // Member Functions
 
         //- Always return true to allow mesh.update() to work uninterupted
-        virtual bool update()
+        virtual bool update(const bool& force = false)
         {
             return true;
         }

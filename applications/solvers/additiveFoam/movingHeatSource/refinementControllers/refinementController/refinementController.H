@@ -159,7 +159,7 @@ public:
         virtual void setRefinementField();
     
         //- Update refinementField and return true at specified time
-        virtual bool update() = 0;
+        virtual bool update(const bool& force = false) = 0;
 
         //- Read the heat source dictionary
         virtual bool read() = 0;

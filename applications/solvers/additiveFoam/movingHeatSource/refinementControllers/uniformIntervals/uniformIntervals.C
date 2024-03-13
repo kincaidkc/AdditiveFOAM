@@ -92,9 +92,11 @@ Foam::refinementControllers::uniformIntervals::uniformIntervals
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-bool Foam::refinementControllers::uniformIntervals::update()
+bool Foam::refinementControllers::uniformIntervals::update(const bool& force)
 {
-    if ((updateTime_ - mesh_.time().value()) < small)
+    if ((updateTime_ - mesh_.time().value() < small)
+        ||
+        (force == true))
     {
         // Update next refinement time
         updateTime_ = mesh_.time().value() + intervalTime_;
