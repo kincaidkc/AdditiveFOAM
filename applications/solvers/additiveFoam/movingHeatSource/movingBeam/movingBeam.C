@@ -55,7 +55,7 @@ Foam::movingBeam::movingBeam
     position_(Zero),
     power_(0.0),
     endTime_(0.0),
-    length_(0.0),
+    totalLength_(0.0),
     deltaT_(GREAT),
     hitPathIntervals_(true)
 {
@@ -284,7 +284,7 @@ void Foam::movingBeam::readPath()
         {
             scalar d_ = mag(path_[i].position() - path_[i-1].position());
             
-            length_ += d_;
+            totalLength_ += d_;
                     
             path_[i].setTime
             (

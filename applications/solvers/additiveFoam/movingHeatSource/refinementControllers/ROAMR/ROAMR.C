@@ -47,10 +47,8 @@ Foam::refinementControllers::ROAMR::ROAMR
     uniformIntervals(sources, dict, mesh, true),
 
     coeffs_(refinementDict_.optionalSubDict(typeName + "Coeffs")),
-    cellsPerProc_(coeffs_.lookupOrDefault<int>("cellsPerProc", 20000))
+    cellsPerProc_(coeffs_.lookupOrDefault<int>("cellsPerProc", 10000))
 {
-    Info << "Calculating initial AMR interval size..." << endl;
-
     //- Get average cell volume and cross-sectional area
     label totalCells = mesh_.nCells();
     reduce(totalCells, sumOp<label>());
@@ -63,7 +61,7 @@ Foam::refinementControllers::ROAMR::ROAMR
 
     forAll(sources_, i)
     {
-        maxLen = max(sources_[i].beam().length(), maxLen);
+        maxLen = max(sources_[i].beam().totalLength(), maxLen);
         
         treeBoundBox beamBb
         (
@@ -78,7 +76,9 @@ Foam::refinementControllers::ROAMR::ROAMR
 
         maxDim = max(maxDim, bbMaxDim);
         
-        scanArea += 4.0 * bbMaxDim * Foam::pow(Foam::pow(bbMax[2] - bbMin[2], 2.0), 0.5);
+        scanArea +=
+            4.0 * bbMaxDim
+          * Foam::pow(Foam::pow(bbMax[2] - bbMin[2], 2.0), 0.5);
     }
 
     //- Calculate maximum number of intervals or shortest interval
@@ -91,9 +91,10 @@ Foam::refinementControllers::ROAMR::ROAMR
 
     if (targetCells > totalCells)
     {
-        intervals_ = maxLen * scanArea / vAvg
-                     / (targetCells - totalCells)
-                     * (Foam::pow(2.0, 3.0 * nLevels_) - 1.0);
+        intervals_ =
+            maxLen * scanArea / vAvg
+          / (targetCells - totalCells)
+          * (Foam::pow(2.0, 3.0 * nLevels_) - 1.0);
     }
 
     //- Bound number of intervals between 1 and maxIntervals
@@ -128,11 +129,13 @@ bool Foam::refinementControllers::ROAMR::update(const bool& force)
             reduce(totalCells, sumOp<label>());
             scalar currCellsPerProc = totalCells / Pstream::nProcs();
 
-            Info << "Current cells per processor: " << currCellsPerProc << endl;
+            Info << "Current cells per processor: "
+                 << currCellsPerProc << endl;
             Info << "Current interval time: " << intervalTime_ << endl;
 
             //- Rescale interval time
-            scalar scale = min(2.0, max(0.5, cellsPerProc_ / currCellsPerProc));
+            scalar scale =
+                min(2.0, max(0.5, cellsPerProc_ / currCellsPerProc));
             
             intervalTime_ *= scale;
             
