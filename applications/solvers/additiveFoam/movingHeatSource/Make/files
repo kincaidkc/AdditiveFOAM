@@ -16,6 +16,7 @@ refinementControllers/refinementController/refinementController.C
 refinementControllers/refinementController/refinementControllerNew.C
 refinementControllers/noRefinementController/noRefinementController.C
 refinementControllers/uniformIntervals/uniformIntervals.C
+refinementControllers/ROAMR/ROAMR.C
 
 movingHeatSourceModel/movingHeatSourceModel.C
 

@@ -62,8 +62,12 @@ class uniformIntervals
         //- Dictionary
         dictionary coeffs_;
         
+protected:
+
+    //- Protected data
+        
         //- Number of intervals
-        label intervals_;
+        scalar intervals_;
         
         //- User-defined bounding box for refinement around moving beam
         //- Defaults to an inverted bounding box that is updated for each beam
@@ -91,7 +95,8 @@ public:
         (
             const PtrList<heatSourceModel>& sources,
             const dictionary& dict,
-            const fvMesh& mesh
+            const fvMesh& mesh,
+            const bool& roamr = false
         );
 
 
@@ -103,7 +108,7 @@ public:
     // Member Functions
 
         //- Update the refinement marker field and return true at each interval
-        virtual bool update();
+        virtual bool update(const bool& force = false);
 
         //- Read the heatSourceProperties dictionary
         virtual bool read();
