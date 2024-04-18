@@ -56,7 +56,7 @@ refinementControl
     
     ROAMRCoeffs
     {
-        cellsPerProc        20000;
+        cellsPerProc        10000;
     }
 }
 
