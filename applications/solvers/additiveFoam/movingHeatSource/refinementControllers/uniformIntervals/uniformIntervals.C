@@ -96,7 +96,7 @@ bool Foam::refinementControllers::uniformIntervals::update(const bool& force)
 {
     if ((updateTime_ - mesh_.time().value() < small)
         ||
-        (force == true))
+        (force))
     {
         // Update next refinement time
         updateTime_ = mesh_.time().value() + intervalTime_;
