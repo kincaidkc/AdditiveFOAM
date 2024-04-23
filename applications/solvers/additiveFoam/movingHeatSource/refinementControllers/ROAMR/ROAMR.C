@@ -61,8 +61,6 @@ Foam::refinementControllers::ROAMR::ROAMR
 
     forAll(sources_, i)
     {
-        maxLen = max(sources_[i].beam().totalLength(), maxLen);
-        
         treeBoundBox beamBb
         (
             min(vector::zero, boundingBox_.min()),
@@ -79,6 +77,13 @@ Foam::refinementControllers::ROAMR::ROAMR
         scanArea +=
             4.0 * bbMaxDim
           * Foam::pow(Foam::pow(bbMax[2] - bbMin[2], 2.0), 0.5);
+          
+        //- Calculate beam scan length + effective spot melt length
+        scalar beamLen =
+            sources_[i].beam().totalLength()
+          + sources_[i].beam().totalSpots() * bbMaxDim;
+        
+        maxLen = max(beamLen, maxLen);
     }
 
     //- Calculate maximum number of intervals or shortest interval

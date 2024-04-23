@@ -91,6 +91,9 @@ private:
         //- Total length of path
         scalar totalLength_;
         
+        //- Total number of spot melts
+        label totalSpots_;
+        
         //- Time step used for heat source integration
         scalar deltaT_;
         
@@ -170,9 +173,16 @@ public:
             return deltaT_;
         }
         
+        //- Return total length of scan track
         inline scalar totalLength() const
         {
             return totalLength_;
+        }
+        
+        //- Return number of spot melts
+        inline label totalSpots() const
+        {
+            return totalSpots_;
         }
 
         //- Return path end time
