@@ -87,9 +87,9 @@ int main(int argc, char *argv[])
 
     while (runTime.run())
     {
-        timer.start("Update Properties")
+        timer.start("Update Properties");
         #include "updateProperties.H"
-        timer.stop("Update Properties")
+        timer.stop("Update Properties");
         
         #include "readDyMControls.H"
         #include "CourantNo.H"
