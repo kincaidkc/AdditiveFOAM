@@ -87,7 +87,10 @@ int main(int argc, char *argv[])
 
     while (runTime.run())
     {
+        timer.start("Update Properties")
         #include "updateProperties.H"
+        timer.stop("Update Properties")
+        
         #include "readDyMControls.H"
         #include "CourantNo.H"
         #include "setDeltaT.H"
@@ -122,14 +125,16 @@ int main(int argc, char *argv[])
         timer.stop("Thermo Solve");
         
         runTime.write();
+        
+        if(runTime.writeTime())
+        {
+            timer.write();
+        }
 
         Info<< "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
             << "  ClockTime = " << runTime.elapsedClockTime() << " s"
             << nl << endl;
     }
-    
-    // Write time profiling information
-    timer.write();
 
     return 0;
 }

@@ -173,7 +173,7 @@ bool Foam::functionObjects::unmappedSolidificationFields::end()
         writePath + "/" + "data_" + Foam::name(Pstream::myProcNo()) + ".csv"
     );
     
-    os << "x    y    z    t    dTdt\n";
+    os << "x,y,z,t,dTdt\n";
     
     for (int i = 0; i < events_.size(); ++i)
     {
