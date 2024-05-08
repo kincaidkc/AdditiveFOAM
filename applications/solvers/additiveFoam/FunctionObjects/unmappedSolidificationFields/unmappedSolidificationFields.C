@@ -108,7 +108,6 @@ Foam::wordList Foam::functionObjects::unmappedSolidificationFields::fields() con
 
 bool Foam::functionObjects::unmappedSolidificationFields::execute()
 {
-    Info << "executing unmappedSolidifaction fields" << endl;
     //- Get current time
     const scalar& time = mesh_.time().value();
     
@@ -158,13 +157,10 @@ bool Foam::functionObjects::unmappedSolidificationFields::execute()
 
 bool Foam::functionObjects::unmappedSolidificationFields::end()
 {
-    Info << "ending unmapped" << endl;
     const fileName writePath
     (
         mesh_.time().rootPath()/mesh_.time().globalCaseName()/"unmappedSolidificationFields"
     );
-    
-    Info << "unmapped write dir: " << writePath << endl;
     
     mkDir(writePath);
     
