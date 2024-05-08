@@ -124,7 +124,7 @@ bool Foam::functionObjects::unmappedSolidificationFields::execute()
         
         if (AMR_)
         {
-            if (mesh_.V()[celli] > (pow(refinedSize_, 3.0) + VSMALL))
+            if (mesh_.V()[celli] > (pow(refinedSize_ + SMALL, 3.0)))
             {
                 maxLevel = false;
             }
