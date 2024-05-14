@@ -119,6 +119,8 @@ bool Foam::functionObjects::unmappedSolidificationFields::execute()
     //- Calculate refined mesh volume
     const scalar Vr = Foam::pow(1.1 * refinedSize_, 3.0);
     
+    label nEvents = 0;
+    
     forAll(mesh_.C(), celli)
     {
         //- Check that cells are in max refinement level for AMR cases
@@ -148,8 +150,15 @@ bool Foam::functionObjects::unmappedSolidificationFields::execute()
             eventi[4] = dTdt[celli];
             
             events_.append(eventi);
+            
+            ++nEvents;
         }
     }
+    
+    reduce(nEvents, sumOp<label>());
+    
+    Info << "unmappedSolidificationFields recorded " << nEvents 
+         << " events." << endl;
     
     //- Clean cells which have been remelted (not yet implemented)
     //removeRemelts();
