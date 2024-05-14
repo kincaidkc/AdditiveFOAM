@@ -116,6 +116,9 @@ bool Foam::functionObjects::unmappedSolidificationFields::execute()
     
     const volScalarField dTdt = fvc::ddt(T_);
     
+    //- Calculate refined mesh volume
+    const scalar Vr = Foam::pow(1.1 * refinedSize_, 3.0);
+    
     forAll(mesh_.C(), celli)
     {
         //- Check that cells are in max refinement level for AMR cases
@@ -123,7 +126,7 @@ bool Foam::functionObjects::unmappedSolidificationFields::execute()
         
         if (AMR_)
         {
-            if (mesh_.V()[celli] > (pow(refinedSize_ + SMALL, 3.0)))
+            if (mesh_.V()[celli] > Vr)
             {
                 maxLevel = false;
             }
@@ -157,20 +160,30 @@ bool Foam::functionObjects::unmappedSolidificationFields::execute()
 
 bool Foam::functionObjects::unmappedSolidificationFields::end()
 {
-    const fileName writePath
-    (
-        mesh_.time().rootPath()/mesh_.time().globalCaseName()/"unmappedSolidificationFields"
-    );
+    return true;
+}
+
+
+bool Foam::functionObjects::unmappedSolidificationFields::write()
+{
+    //- Get current time
+    const fileName currTime = Foam::name(mesh_.time().value());
     
-    mkDir(writePath);
+    //- Create file path for current time data
+    const fileName currTimePath(mesh_.time().rootPath()
+                                /mesh_.time().globalCaseName()
+                                /"unmappedSolidificationFields"/currTime);
     
-    OFstream os
-    (
-        writePath + "/" + "data_" + Foam::name(Pstream::myProcNo()) + ".csv"
-    );
+    mkDir(currTimePath);
     
+    //- Open file for each proc
+    OFstream os(currTimePath + "/" + "data_" 
+                + Foam::name(Pstream::myProcNo()) + ".csv");
+    
+    //- Write header
     os << "x,y,z,t,dTdt\n";
     
+    //- Write each event in series to file
     for (int i = 0; i < events_.size(); ++i)
     {
         int n = events_[i].size() - 1;
@@ -183,13 +196,6 @@ bool Foam::functionObjects::unmappedSolidificationFields::end()
         os << events_[i][n] << "\n";
     }
     
-    
-    return true;
-}
-
-
-bool Foam::functionObjects::unmappedSolidificationFields::write()
-{
     return true;
 }
 
