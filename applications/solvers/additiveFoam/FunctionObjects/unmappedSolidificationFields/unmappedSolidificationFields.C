@@ -75,7 +75,20 @@ Foam::functionObjects::unmappedSolidificationFields::unmappedSolidificationField
     AMR_(dict_.lookup<bool>("AMR")),
     refinedSize_(0.0),
     Tl_(dict_.lookup<scalar>("Tl")),
-    T_(mesh_.lookupObject<VolField<scalar>>("T"))
+    T_(mesh_.lookupObject<VolField<scalar>>("T")),
+    R_
+    (
+        IOobject
+        (
+            "R",
+            mesh_.time().timeName(),
+            mesh_,
+            IOobject::NO_READ,
+            IOobject::NO_WRITE
+        ),
+        mesh_,
+        dimensionedScalar(dimTemperature/dimTime, 0.0)
+    )
 {
     read(dict);
     
@@ -83,6 +96,8 @@ Foam::functionObjects::unmappedSolidificationFields::unmappedSolidificationField
     {
         refinedSize_ = dict_.lookup<scalar>("refinedSize");
     }
+
+    R_ = fvc::ddt(T_);
 }
 
 
@@ -114,7 +129,12 @@ bool Foam::functionObjects::unmappedSolidificationFields::execute()
     //- Get old temperature and time derivative of temperature
     const volScalarField& T0 = T_.oldTime();
     
-    const volScalarField dTdt = fvc::ddt(T_);
+    //- Update cooling rate
+    R_.oldTime();
+    R_ = fvc::ddt(T_);
+
+    //- Calculate the thermal gradient
+    const volScalarField G = mag(fvc::grad(T_));
     
     //- Calculate refined mesh volume
     const scalar Vr = Foam::pow(1.1 * refinedSize_, 3.0);
@@ -138,17 +158,16 @@ bool Foam::functionObjects::unmappedSolidificationFields::execute()
         if ((T0[celli] > Tl_) && (T_[celli] <= Tl_) && (maxLevel))
         {
             vector C = mesh_.C()[celli];
-            
-            List<scalar> eventi(5);
-            
+
+            List<scalar> eventi(6);
+
             eventi[0] = C[0];
             eventi[1] = C[1];
             eventi[2] = C[2];
-            
             eventi[3] = time;
-            
-            eventi[4] = dTdt[celli];
-            
+            eventi[4] = R_.oldTime()[celli];
+            eventi[5] = G[celli];
+
             events_.append(eventi);
             
             ++nEvents;
@@ -190,7 +209,7 @@ bool Foam::functionObjects::unmappedSolidificationFields::write()
                 + Foam::name(Pstream::myProcNo()) + ".csv");
     
     //- Write header
-    os << "x,y,z,t,dTdt\n";
+    os << "x,y,z,t,R,G\n";
     
     //- Write each event in series to file
     for (int i = 0; i < events_.size(); ++i)

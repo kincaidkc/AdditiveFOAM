@@ -91,6 +91,9 @@ class unmappedSolidificationFields
         //- Pointer to temperature field
         const volScalarField& T_;
         
+        //- Cooling rate field
+        volScalarField R_;
+        
         //- List of solidification events
         DynamicList<List<scalar>> events_;
 
