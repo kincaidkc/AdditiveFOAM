@@ -56,6 +56,7 @@ Foam::movingBeam::movingBeam
     power_(0.0),
     endTime_(0.0),
     totalLength_(0.0),
+    totalSpots_(0),
     deltaT_(GREAT),
     hitPathIntervals_(true)
 {
@@ -279,6 +280,11 @@ void Foam::movingBeam::readPath()
             (
                 path_[i-1].time() + path_[i].parameter()
             );
+            
+            if (path_[i].power() > SMALL)
+            {
+                ++totalSpots_;
+            }
         }
         else
         {

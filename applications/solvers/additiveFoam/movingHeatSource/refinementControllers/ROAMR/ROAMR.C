@@ -61,8 +61,6 @@ Foam::refinementControllers::ROAMR::ROAMR
 
     forAll(sources_, i)
     {
-        maxLen = max(sources_[i].beam().totalLength(), maxLen);
-        
         treeBoundBox beamBb
         (
             min(vector::zero, boundingBox_.min()),
@@ -79,6 +77,13 @@ Foam::refinementControllers::ROAMR::ROAMR
         scanArea +=
             4.0 * bbMaxDim
           * Foam::pow(Foam::pow(bbMax[2] - bbMin[2], 2.0), 0.5);
+          
+        //- Calculate beam scan length + effective spot melt length
+        scalar beamLen =
+            sources_[i].beam().totalLength()
+          + sources_[i].beam().totalSpots() * bbMaxDim;
+        
+        maxLen = max(beamLen, maxLen);
     }
 
     //- Calculate maximum number of intervals or shortest interval
@@ -113,13 +118,21 @@ Foam::refinementControllers::ROAMR::ROAMR
 
 bool Foam::refinementControllers::ROAMR::update(const bool& force)
 {
-    //- Update if mesh time equals update time
-    //  OR if time index is equal to the max refinement level.
-    //  This second condition adjusts the mesh after the guess at the first
-    //  refinement interval size to prevent an overly long first interval.
-    if ((updateTime_ - mesh_.time().value() < small)
-        ||
-        (mesh_.time().timeIndex() == nLevels_ + 1))
+    //- Check number of cells in mesh against desired number of cells
+    bool forceUpdate = false;
+    const label nCells = returnReduce(mesh_.nCells(), sumOp<label>());
+    const scalar ratio = nCells / (cellsPerProc_ * Pstream::nProcs());
+    
+    if ((ratio > 1.5) || (ratio < 0.5))
+    {
+        Info << "Mesh contains " << nCells << " cells, which is " << ratio
+             << " desired number of cells. Forcing mesh update..." << endl;
+        forceUpdate = true;
+    }
+    
+    //- Update if mesh time equals update time or if the forceUpdate flag is
+    //  set due to an improperly sized mesh
+    if ((updateTime_ - mesh_.time().value() < small) || (forceUpdate))
     {
         //- Guard against rescaling until full refinement is reached
         if (mesh_.time().timeIndex() >= nLevels_ + 1)
