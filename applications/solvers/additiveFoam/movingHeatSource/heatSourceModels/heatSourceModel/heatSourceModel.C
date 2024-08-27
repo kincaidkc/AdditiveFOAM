@@ -26,8 +26,6 @@ License
 \*---------------------------------------------------------------------------*/
 
 #include "heatSourceModel.H"
-#include "labelVector.H"
-#include "hexMatcher.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
 
@@ -366,6 +364,8 @@ Foam::heatSourceModel::qDot()
 
         qDot_ = absorbedPower * weights / volume;
     }
+
+    qDot_.correctBoundaryConditions();
 
     return tqDot;
 }

@@ -1,0 +1,222 @@
+/*---------------------------------------------------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Copyright (C) 2011-2022 OpenFOAM Foundation
+     \\/     M anipulation  |
+-------------------------------------------------------------------------------
+                Copyright (C) 2023 Oak Ridge National Laboratory                
+-------------------------------------------------------------------------------
+License
+    This file is part of OpenFOAM.
+
+    OpenFOAM is free software: you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
+    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+    for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
+
+\*---------------------------------------------------------------------------*/
+
+#include "uniformIntervals.H"
+#include "addToRunTimeSelectionTable.H"
+
+// * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
+
+namespace Foam
+{
+namespace refinementControllers
+{
+    defineTypeNameAndDebug(uniformIntervals, 0);
+    addToRunTimeSelectionTable
+    (
+        refinementController,
+        uniformIntervals,
+        dictionary
+    );
+}
+}
+
+// * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
+
+Foam::refinementControllers::uniformIntervals::uniformIntervals
+(
+    const PtrList<heatSourceModel>& sources,
+    const dictionary& dict,
+    const fvMesh& mesh,
+    const bool& roamr
+)
+:
+    refinementController(typeName, sources, dict, mesh),
+    coeffs_(roamr ? refinementDict_.optionalSubDict("ROAMRCoeffs")
+                  : refinementDict_.optionalSubDict(typeName + "Coeffs")),
+    intervals_(roamr ? 1.0 : coeffs_.lookup<scalar>("intervals")),
+    boundingBox_
+    (
+        coeffs_.lookupOrDefault<boundBox>
+        (
+            "boundingBox",
+            boundBox(point::max, point::min)
+        )
+    ),
+    intervalTime_(0.0),
+    updateTime_(0.0),
+    endTime_(0.0)
+{
+    //- Set AMR update end time to minimum of solution time and max beam time
+    forAll(sources_, i)
+    {
+        endTime_ = max(sources_[i].beam().endTime(), endTime_);
+    }
+
+    endTime_ = min(endTime_, mesh.time().endTime().value());
+
+    Info << "endTime: " << endTime_ << endl;
+
+    //- Set interval time to the number of intervals between start and end
+    intervalTime_ =
+        max(0, endTime_ - mesh.time().startTime().value()) / intervals_;
+
+    Info<< "AMR time interval: " << intervalTime_ << " s" << endl;
+
+    Info<< "refinement bounding box: " << boundingBox_ << endl;
+}
+
+
+// * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
+
+bool Foam::refinementControllers::uniformIntervals::update(const bool& force)
+{
+    if ((updateTime_ - mesh_.time().value() < small)
+        ||
+        (force))
+    {
+        // Update next refinement time
+        updateTime_ = mesh_.time().value() + intervalTime_;
+
+        //- Set initial refinement field in base class
+        refinementController::setRefinementField();
+
+        if ((endTime_ - mesh_.time().value()) < small)
+        {
+            Info << "continuing AMR checks for possible mesh coarsening" << endl;
+            return true;
+        }
+
+        //- Calculate the bounding box for each cell
+        List<treeBoundBox> cellBbs(mesh_.nCells());    
+        const pointField& points = mesh_.points();
+        const vector extend = 1e-10 * vector::one;
+
+        forAll(mesh_.cells(), celli)
+        {
+            treeBoundBox cellBb(point::max, point::min);
+
+            const labelList& vertices = mesh_.cellPoints()[celli];
+
+            forAll(vertices, j)
+            {
+                cellBb.min()
+                    = min(cellBb.min(), points[vertices[j]] - extend);
+                cellBb.max()
+                    = max(cellBb.max(), points[vertices[j]] + extend);
+            }
+
+            cellBbs[celli] = cellBb;
+        }
+
+        //- Update refinement marker field:
+        //    1. march along beam paths until next update time or path end
+        //    2. mark overlap cells for refinement.
+        forAll(sources_, i)
+        {
+            const movingBeam& beam_ = sources_[i].beam();
+            
+            scalar time_ = mesh_.time().value();
+
+            vector offset_ = 1.5*sources_[i].dimensions();
+
+            while ((min(beam_.endTime(), updateTime_) - time_) > small)
+            {
+                vector position_ = beam_.position(time_);
+
+                treeBoundBox beamBb
+                (
+                    position_ - min(offset_, boundingBox_.min()),
+                    position_ + max(offset_, boundingBox_.max())
+                );
+                
+                forAll(mesh_.cells(), celli)
+                {
+                    if (refinementField_[celli] > 0)
+                    {
+                        // Do nothing, cell already marked for refiment
+                    }
+                    else if (cellBbs[celli].overlaps(beamBb))
+                    {
+                        refinementField_[celli] = 1;
+                    }
+                }
+                refinementField_.correctBoundaryConditions();
+
+                //- Calculate time step required to resolve beam motion on mesh
+                label index_ = beam_.findIndex(time_);
+                segment path_ = beam_.getSegment(index_);
+                scalar timeToNextPath_ = path_.time() - time_;
+
+                //- If the path end time is directly hit, step to next path
+                while (mag(timeToNextPath_) < small)
+                {
+                    index_ = index_ + 1;
+                    path_ = beam_.getSegment(index_);
+                    timeToNextPath_ = path_.time() - time_;
+                }
+
+                scalar dt_ = min(timeToNextPath_, max(0, updateTime_ - time_));
+
+                if (path_.mode() == 0)
+                {
+                    const scalar scanTime_ =
+                        sources_[i].D2sigma() / path_.parameter();
+
+                    dt_ = min(timeToNextPath_, scanTime_);
+                }
+
+                time_ += dt_;
+            }
+        }
+        
+        Info << "Updating AMR field to trigger refinement" << endl;
+    }
+
+    return true;
+}
+
+
+bool Foam::refinementControllers::uniformIntervals::read()
+{
+    if (refinementController::read())
+    {
+        refinementDict_ = optionalSubDict(type() + "Coeffs");
+
+        //- Mandatory entries
+        refinementDict_.lookup("intervals") >> intervals_;
+        refinementDict_.lookup("boundingBox") >> boundingBox_;
+
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+
+// ************************************************************************* //

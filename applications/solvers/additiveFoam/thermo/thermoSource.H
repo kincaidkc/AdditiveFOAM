@@ -1,5 +1,5 @@
 {
-    scalarField xvals(thermo.x());
+    const scalarField& xvals(thermo.x());
     const scalarField& yvals(thermo.y());
     label n = xvals.size();
     const scalar slope = 1e10;

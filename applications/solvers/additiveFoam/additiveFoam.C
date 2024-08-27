@@ -31,16 +31,28 @@ Description
     
 \*---------------------------------------------------------------------------*/
 
-#include "fvCFD.H"
-#include "pimpleControl.H"
+#include "argList.H"
+#include "timeSelector.H"
+#include "zeroGradientFvPatchFields.H"
+#include "IFstream.H"
+#include "uniformDimensionedFields.H"
+#include "pressureReference.H"
+#include "findRefCell.H"
 
-#include "graph.H"
+#include "fvmDiv.H"
+#include "fvmDdt.H"
+#include "fvmLaplacian.H"
+#include "constrainPressure.H"
+#include "constrainHbyA.H"
+#include "pimpleControl.H"
+#include "fvCorrectPhi.H"
 #include "Polynomial.H"
 
-#include "interpolateXY/interpolateXY.H"
-
+// AdditiveFOAM specific headers
 #include "movingHeatSourceModel.H"
-#include "foamToExaCA/foamToExaCA.H"
+#include "graph.H"
+#include "interpolateXY.H"
+#include "Timer.H"
 
 #include "CrankNicolsonDdtScheme.H"
 
@@ -48,24 +60,26 @@ Description
 
 int main(int argc, char *argv[])
 {
+    using namespace Foam;
+    
     #include "postProcess.H"
 
     #include "setRootCase.H"
     #include "createTime.H"
     #include "createMesh.H"
-    #include "createControl.H"
+    #include "createDyMControls.H"
     #include "createFields.H"
-    #include "createTimeControls.H"
     #include "initContinuityErrs.H"
+    
+    // Initialize profiling timer
+    Timers timer(runTime);
 
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
     
-    // initialize time-stepping controls
+    // Initialize time-stepping controls
     scalar DiNum = 0.0;
 
     scalar alphaCoNum = 0.0;
-
-    foamToExaCA ExaCA(T);
 
     movingHeatSourceModel sources(mesh);
 
@@ -76,12 +90,17 @@ int main(int argc, char *argv[])
     while (runTime.run())
     {
         #include "updateProperties.H"
-
-        #include "readTimeControls.H"
+        #include "readDyMControls.H"
         #include "CourantNo.H"
         #include "setDeltaT.H"
 
+        timer.start("Heat Source Update");
         sources.update();
+        timer.stop("Heat Source Update");
+        
+        timer.start("Mesh Update");
+        mesh.update();
+        timer.stop("Mesh Update");
         
         runTime++;
 
@@ -89,24 +108,30 @@ int main(int argc, char *argv[])
 
         #include "solutionControls.H"
         
-        while (pimple.loop() && fluidInDomain)
+        while (pimple.loop())
         {
-            #include "pU/UEqn.H"
-            #include "pU/pEqn.H"
+            #include "moveMesh.H"
+            
+            if (fluidInDomain)
+            {
+                #include "pU/UEqn.H"
+                #include "pU/pEqn.H"    
+            }
         }
 
+        timer.start("Thermo Solve");
         #include "thermo/TEqn.H"
+        timer.stop("Thermo Solve");
         
-        ExaCA.update();
-
         runTime.write();
 
         Info<< "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
             << "  ClockTime = " << runTime.elapsedClockTime() << " s"
             << nl << endl;
     }
-
-    ExaCA.write();
+    
+    // Write time profiling information
+    timer.write();
 
     return 0;
 }

@@ -37,11 +37,14 @@ SourceFiles
 #ifndef heatSourceModel_H
 #define heatSourceModel_H
 
+#include "labelVector.H"
+#include "hexMatcher.H"
 #include "dictionary.H"
 #include "volFields.H"
 #include "movingBeam.H"
 #include "absorptionModel.H"
 #include "labelVector.H"
+#include "treeBoundBox.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -158,7 +161,7 @@ public:
     // Member Functions
     
         //- Return access to the movingBeam instance
-        movingBeam& beam()
+        const movingBeam& beam() const
         {
             return movingBeam_();
         }
@@ -176,7 +179,7 @@ public:
         }
 
         //- Return vector of current heat source dimensions
-        vector dimensions()
+        const vector dimensions() const
         {
             return dimensions_;
         }
@@ -198,6 +201,9 @@ public:
 
         //- Return the normalization volume for the integrated distribution
         virtual dimensionedScalar V0() = 0;
+        
+        //- Return the beam half width
+        virtual scalar D2sigma() const = 0;
 
         //- Read the heat source dictionary
         virtual bool read() = 0;

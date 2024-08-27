@@ -40,7 +40,8 @@ SourceFiles
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-#include "fvCFD.H"
+#include <fstream>
+#include "fvc.H"
 #include "segment.H"
 #include "HashTable.H"
 #include "absorptionModel.H"
@@ -76,16 +77,19 @@ private:
         DynamicList<segment> path_;
         
         //- Index of path
-        label index_;
+        mutable label index_;
         
         //- Position of beam
-        vector position_;
+        mutable vector position_;
         
         //- Power of beam
-        scalar power_;
+        mutable scalar power_;
         
         //- End time of path
         scalar endTime_;
+        
+        //- Total length of path
+        scalar totalLength_;
         
         //- Time step used for heat source integration
         scalar deltaT_;
@@ -147,39 +151,63 @@ public:
     virtual ~movingBeam()
     {}
 
-    // Member Functions
+    // Member Functions - Return
     
-        //- Return current position of the moving beam
+        //- Return position of the moving beam at current simulation time
         inline vector position() const
         {
             return position_;
         }
 
-        //- Return current power of the moving beam
+        //- Return power of the moving beam at current simulation time
         inline scalar power() const
         {
             return power_;
         }
         
-        scalar deltaT() const
+        inline scalar deltaT() const
         {
             return deltaT_;
         }
+        
+        inline scalar totalLength() const
+        {
+            return totalLength_;
+        }
+
+        //- Return path end time
+        inline scalar endTime() const
+        {
+            return endTime_;
+        }
+
+
+    // Member Functions - Calculated
+
+        //- Returns true if current simulation time is less than path endTime
+        bool activePath() const;
+
+        //- Return position at specified time
+        vector position(const scalar time) const;
+
+        //- Returns the path segment at the provided index
+        segment getSegment(const label index) const;
+        
+        //- Returns the path index at provided time with optional index seed
+        label findIndex
+        (
+            const scalar time,
+            const label seedIndex = -1
+        ) const;
+
+        //- Adjust solution time step to hit pathInterval
+        void adjustDeltaT(scalar& dt) const;
+
+        //- Move the beam to the provided time and update beam parameters
+        void move(const scalar time) const;
 
         //- Read the path file
         void readPath();
-        
-        //- Returns true if the simulation time is less than path endTime
-        bool activePath();
-        
-        //- Move the beam to the provided time
-        void move(const scalar time);
-        
-        //- Returns the path index at the provided time
-        label findIndex(const scalar time);
-
-        //- Adjust solution time step to hit pathInterval
-        void adjustDeltaT(scalar& dt);
 };
 
 

@@ -57,11 +57,12 @@ Foam::movingHeatSourceModel::movingHeatSourceModel
             mesh_.time().timeName(),
             mesh_,
             IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
+            IOobject::AUTO_WRITE
         ),
         mesh_,
         dimensionedScalar(dimPower/dimVolume, 0.0)
-    )    
+    ),
+    refinementController_(nullptr)  
 {
     sources_.resize(sourceNames_.size());
         
@@ -80,6 +81,9 @@ Foam::movingHeatSourceModel::movingHeatSourceModel
             ).ptr()
         );
     }
+    
+    refinementController_ =
+        refinementController::New(sources_, dict_, mesh_);
 }
 
 // * * * * * * * * * * * * * * * Destructors * * * * * * * * * * * * * * * * //
@@ -147,6 +151,11 @@ void Foam::movingHeatSourceModel::update()
             qDot_ += qDoti;
         }
     }
+
+    qDot_.correctBoundaryConditions();
+
+    // update the heat source-based AMR field
+    refinementController_->update();
 }
 
 // ************************************************************************* //
