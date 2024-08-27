@@ -54,6 +54,8 @@ Description
 #include "interpolateXY.H"
 #include "Timer.H"
 
+#include "CrankNicolsonDdtScheme.H"
+
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 int main(int argc, char *argv[])

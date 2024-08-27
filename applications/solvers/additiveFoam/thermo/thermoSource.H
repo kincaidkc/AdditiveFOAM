@@ -2,14 +2,13 @@
     const scalarField& xvals(thermo.x());
     const scalarField& yvals(thermo.y());
     label n = xvals.size();
+    const scalar slope = 1e10;
 
     forAll(mesh.cells(), celli)
     {
-        // update solid fraction estimate
-        alpha10[celli] = alpha1[celli];
-
         // update slope and temperature estimates
-        const scalar& x(T[celli]);
+        const scalar& x = T[celli];
+        const scalar& y = alpha1[celli];
 
         if ((x < Tliq.value()) && (x > Tsol.value()))
         {
@@ -47,17 +46,25 @@
 
             dFdT[celli] = (yvals[hi] - yvals[lo]) / (xvals[hi] - xvals[lo]);
 
-            T0[celli] = xvals[lo] + (alpha10[celli] - yvals[lo])/dFdT[celli];
+            T0[celli] = xvals[lo] + (y - yvals[lo])/dFdT[celli];
+        }
+        else if ((x >= Tliq.value()) && (y > thermoTol))
+        {
+            dFdT[celli] = slope;
+            T0[celli] = Tliq.value() - thermoTol;
+        }
+        else if ((x <= Tsol.value()) && (y < 1 - thermoTol))
+        {
+            dFdT[celli] = slope;
+            T0[celli] = Tsol.value() + thermoTol;
         }
         else
         {
             dFdT[celli] = 0.0;
-            T0[celli] = T[celli];
+            T0[celli] = x;
         }
     }
 
-    // update boundary conditions
-    alpha10.correctBoundaryConditions();
     dFdT.correctBoundaryConditions();
     T0.correctBoundaryConditions();
 }
