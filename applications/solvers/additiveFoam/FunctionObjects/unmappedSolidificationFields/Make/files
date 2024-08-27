@@ -1,0 +1,3 @@
+unmappedSolidificationFields.C
+
+LIB = $(FOAM_USER_LIBBIN)/libunmappedSolidificationFields

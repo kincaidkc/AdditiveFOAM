@@ -96,7 +96,9 @@ void Timers::stop(const std::string& name)
 
 void Timers::write() const
 {
-    const fileName timerPath(runTime_.rootPath()/runTime_.globalCaseName()/"Profiling");
+    const fileName currTime = Foam::name(runTime_.value());
+
+    const fileName timerPath(runTime_.rootPath()/runTime_.globalCaseName()/"Profiling"/currTime);
 
     mkDir(timerPath);
 
