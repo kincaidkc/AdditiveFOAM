@@ -61,6 +61,9 @@ class ROAMR
         //- Minimum interval time to maintain at least
         //  D4sigma between refinements
         scalar minIntervalTime_;
+        
+        //- Time index of last refinement
+        label lastRefi_;
 
 public:
 

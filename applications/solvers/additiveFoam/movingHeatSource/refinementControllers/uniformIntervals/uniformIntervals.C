@@ -149,7 +149,7 @@ bool Foam::refinementControllers::uniformIntervals::update(const bool& force)
 
                 treeBoundBox beamBb
                 (
-                    position_ - min(offset_, boundingBox_.min()),
+                    position_ + min(-1.0 * offset_, boundingBox_.min()),
                     position_ + max(offset_, boundingBox_.max())
                 );
                 
