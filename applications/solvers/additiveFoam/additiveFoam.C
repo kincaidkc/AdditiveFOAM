@@ -105,6 +105,9 @@ int main(int argc, char *argv[])
         
         runTime++;
 
+        Info << "Total number of cells in domain is "
+             << returnReduce(mesh.nCells(), sumOp<label>()) << endl;
+
         Info<< "Time = " << runTime.timeName() << nl << endl;
 
         #include "solutionControls.H"

@@ -211,6 +211,8 @@ bool Foam::functionObjects::timeAboveMelting::write()
         
         os << events_[i][n] << "\n";
     }
+
+    events_.clear();
     
     return true;
 }

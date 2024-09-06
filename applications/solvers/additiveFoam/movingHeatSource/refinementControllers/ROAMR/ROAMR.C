@@ -118,16 +118,36 @@ Foam::refinementControllers::ROAMR::ROAMR
 
 bool Foam::refinementControllers::ROAMR::update(const bool& force)
 {
-    //- Check number of cells in mesh against desired number of cells
-    bool forceUpdate = false;
-    const label nCells = returnReduce(mesh_.nCells(), sumOp<label>());
+    //- Calculate ratio of actual cells in mesh to target mesh size
+    const scalar nCells = returnReduce(mesh_.nCells(), sumOp<label>());
     const scalar ratio = nCells / (cellsPerProc_ * Pstream::nProcs());
-    
-    if ((ratio > 1.5) || (ratio < 0.5))
+   
+    //- Force an update if ratio is off by +/- 20% or more 
+    bool forceUpdate = false;
+
+    if ((ratio > 1.2) || (ratio < 0.8))
     {
-        Info << "Mesh contains " << nCells << " cells, which is " << ratio
-             << " desired number of cells. Forcing mesh update..." << endl;
-        forceUpdate = true;
+        //- Only force update if the current interval is larger than the
+        //  calculated minimum interval size
+        if (intervalTime_ > (1.05 * minIntervalTime_))
+        {
+            //- Don't force update as the mesh size decreases at the end
+            //  of the scan path
+            if ((ratio < 0.8) && (updateTime_ >= endTime_))
+            {
+                Info << "Mesh contains fewer cells than optimal, "
+                     << "but update time is larger than path end time. "
+                     << "Not forcing refinement." << endl;
+            }
+            else
+            {
+                Info << "Mesh contains " << nCells << " cells, which is "
+                     << ratio << " times the desired number of cells. "
+                     << "Forcing mesh update..." << endl;
+
+                forceUpdate = true;
+            }
+        }
     }
     
     //- Update if mesh time equals update time or if the forceUpdate flag is
@@ -138,8 +158,8 @@ bool Foam::refinementControllers::ROAMR::update(const bool& force)
         if (mesh_.time().timeIndex() >= nLevels_ + 1)
         {
             //- Scale interval size based on current cells/proc
-            label totalCells = mesh_.nCells();
-            reduce(totalCells, sumOp<label>());
+            scalar totalCells = mesh_.nCells();
+            reduce(totalCells, sumOp<scalar>());
             scalar currCellsPerProc = totalCells / Pstream::nProcs();
 
             Info << "Current cells per processor: "
@@ -149,11 +169,13 @@ bool Foam::refinementControllers::ROAMR::update(const bool& force)
             //- Rescale interval time
             scalar scale =
                 min(2.0, max(0.5, cellsPerProc_ / currCellsPerProc));
+
+            Info << "Scale factor: " << scale << endl;
             
             intervalTime_ *= scale;
             
             //- Ensure interval time is above minimum time
-            intervalTime_ = max(intervalTime_, minIntervalTime_);
+            intervalTime_ = min(max(intervalTime_, minIntervalTime_), endTime_ - mesh_.time().value());
             
             Info << "New interval time: " << intervalTime_ << endl;
         }
