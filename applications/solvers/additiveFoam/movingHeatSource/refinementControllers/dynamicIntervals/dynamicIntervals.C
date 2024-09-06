@@ -81,6 +81,8 @@ Foam::refinementControllers::dynamicIntervals::dynamicIntervals
     endTime_ = min(endTime_, mesh.time().endTime().value());
     
     nCells0_ = mesh_.nCells();
+    reduce(nCells0_, sumOp<label>());
+    Info << "Total mesh size: " << nCells0_ << endl;
 }
 
 
@@ -92,8 +94,10 @@ bool Foam::refinementControllers::dynamicIntervals::update(const bool& force)
     {
         //- Mark cells above refinement temperature
         refinementController::setRefinementField();
+
+	scalar time_ = mesh_.time().value();
         
-        if ((endTime_ - mesh_.time().value()) < small)
+        if ((endTime_ - time_) < small)
         {
             Info << "Continuing AMR checks for possible mesh coarsening" << endl;
             return true;
@@ -128,8 +132,6 @@ bool Foam::refinementControllers::dynamicIntervals::update(const bool& force)
         forAll(sources_, i)
         {
             const movingBeam& beam_ = sources_[i].beam();
-            
-            scalar time_ = mesh_.time().value();
 
             vector offset_ = 1.5*sources_[i].dimensions();
 
@@ -158,16 +160,72 @@ bool Foam::refinementControllers::dynamicIntervals::update(const bool& force)
         
         //- Estimate number of cells required to refine regions marked 
         //  based on temperature and current beam position
-        scalar vRef = fvc::domainIntegrate(refinementField_).value();
-        scalar nRef = vRef / Foam::pow(hCoarse_, 3.0) * cellsAdded;
+        scalar vRef0 = fvc::domainIntegrate(refinementField_).value();
+        scalar nRef0 = vRef0 / Foam::pow(hCoarse_, 3.0) * cellsAdded;
                         
-        scalar nTot = nCells0_ + nRef;
+        scalar nTot = nCells0_ + nRef0;
+
+	//- Don't do further refinement if estimate mesh size is greater
+	//  than desired mesh size
+	if (nTot >= totalCells_)
+	{
+	    //- Find minimum time step for all beams
+            scalar dt_ = 0.0;
+
+            forAll(sources_, i)
+            {
+                const movingBeam& beam_ = sources_[i].beam();
+                label index_ = beam_.findIndex(time_);
+                segment path_ = beam_.getSegment(index_);
+                scalar timeToNextPath_ = path_.time() - time_;
+
+                //- If the path end time is directly hit, step to next path
+                while (mag(timeToNextPath_) < small)
+                {
+                    index_ = index_ + 1;
+                    path_ = beam_.getSegment(index_);
+                    timeToNextPath_ = path_.time() - time_;
+                }
+
+                dt_ = timeToNextPath_;
+
+                if (path_.mode() == 0)
+                {
+                    const scalar scanTime_ =
+                        sources_[i].D2sigma() / path_.parameter();
+
+                    dt_ = min(dt_, scanTime_);
+                }
+            }
+
+	    //- Set update time to current time + minimum time step
+	    updateTime_ = time_ + dt_;
+
+	    Info << "Mesh larger than target before marching."
+		 << "Setting update time to : " << updateTime_ << endl;
+
+            return true;
+	}
         
-        scalar time_ = mesh_.time().value();
+	scalar vRef = 0.0;
+
+	//- Fudge factor based on observed mesh size
+	scalar factor = 1.0;
+	if (mesh_.time().timeIndex() > nLevels_)
+        {
+	    scalar nCellsAct = mesh_.nCells();
+	    reduce(nCellsAct, sumOp<scalar>());
+            factor = totalCells_ / nCellsAct;
+
+	    //- Limit adjustment magnitude to +/- 20%
+	    factor = max(0.8, min(1.2, factor));
+	}
+
+	Info << "Factor = " << factor << endl;
         
         //- Mark cells ahead of beam for refinement until estimated mesh size
         //  is equal to desired mesh size
-        while (nTot < totalCells_)
+        while (nTot < factor * totalCells_)
         {
             //- Find minimum time step for all beams
             scalar dt_ = 0.0;
@@ -205,10 +263,12 @@ bool Foam::refinementControllers::dynamicIntervals::update(const bool& force)
             
             Info << "Pseudo time: " << time_ << endl;
             
-            if (time_ > endTime_)
+            if (time_ >= endTime_)
             {
                 break;
             }
+
+	    scalar vRefi = 0.0;
             
             //- Update refinement marker field for all beams at new time
             forAll(sources_, i)
@@ -236,14 +296,17 @@ bool Foam::refinementControllers::dynamicIntervals::update(const bool& force)
                         else if (cellBbs[celli].overlaps(beamBb))
                         {
                             refinementField_[celli] = 1;
-                            vRef += mesh_.V()[celli];
+                            vRefi += mesh_.V()[celli];
                         }
                     }
                 }
             }
+
+	    reduce(vRefi, sumOp<scalar>());
             
-            nRef = vRef / Foam::pow(hCoarse_, 3.0) * cellsAdded;
-            nTot = nCells0_ + nRef;
+	    vRef += vRefi;
+            scalar nRef = vRef / Foam::pow(hCoarse_, 3.0) * cellsAdded;
+            nTot = nCells0_ + nRef0 + nRef;
             
             Info << "Estimated mesh size: " << nTot << endl;
             
