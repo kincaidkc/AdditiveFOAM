@@ -209,23 +209,9 @@ bool Foam::refinementControllers::dynamicIntervals::update(const bool& force)
         
 	scalar vRef = 0.0;
 
-	//- Fudge factor based on observed mesh size
-	scalar factor = 1.0;
-	if (mesh_.time().timeIndex() > nLevels_)
-        {
-	    scalar nCellsAct = mesh_.nCells();
-	    reduce(nCellsAct, sumOp<scalar>());
-            factor = totalCells_ / nCellsAct;
-
-	    //- Limit adjustment magnitude to +/- 20%
-	    factor = max(0.8, min(1.2, factor));
-	}
-
-	Info << "Factor = " << factor << endl;
-        
         //- Mark cells ahead of beam for refinement until estimated mesh size
         //  is equal to desired mesh size
-        while (nTot < factor * totalCells_)
+        while (nTot < totalCells_)
         {
             //- Find minimum time step for all beams
             scalar dt_ = 0.0;
