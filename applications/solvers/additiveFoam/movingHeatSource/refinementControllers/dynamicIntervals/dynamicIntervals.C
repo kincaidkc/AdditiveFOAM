@@ -236,11 +236,14 @@ bool Foam::refinementControllers::dynamicIntervals::update(const bool& force)
                         else if (cellBbs[celli].overlaps(beamBb))
                         {
                             refinementField_[celli] = 1;
-                            nTot += cellsAdded;
+                            vRef += mesh_.V()[celli];
                         }
                     }
                 }
             }
+            
+            nRef = vRef / Foam::pow(hCoarse_, 3.0) * cellsAdded;
+            nTot = nCells0_ + nRef;
             
             Info << "Estimated mesh size: " << nTot << endl;
             
