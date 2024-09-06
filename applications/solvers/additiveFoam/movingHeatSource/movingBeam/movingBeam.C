@@ -298,7 +298,7 @@ void Foam::movingBeam::readPath()
             );
         }
 
-        Info << i << tab << path_[i].time() << endl;
+        //Info << i << tab << path_[i].time() << endl;
     }
 }
 

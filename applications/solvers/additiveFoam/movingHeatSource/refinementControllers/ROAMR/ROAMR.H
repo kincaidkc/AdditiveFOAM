@@ -58,6 +58,9 @@ class ROAMR
         //- Target cells per processor (default 20k)
         int cellsPerProc_;
 
+	//- Coarse cell size
+	scalar hCoarse_;
+
         //- Minimum interval time to maintain at least
         //  D4sigma between refinements
         scalar minIntervalTime_;

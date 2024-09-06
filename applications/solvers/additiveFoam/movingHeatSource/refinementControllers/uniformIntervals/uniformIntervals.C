@@ -68,7 +68,8 @@ Foam::refinementControllers::uniformIntervals::uniformIntervals
     ),
     intervalTime_(0.0),
     updateTime_(0.0),
-    endTime_(0.0)
+    endTime_(0.0),
+    refIndex_(0)
 {
     //- Set AMR update end time to minimum of solution time and max beam time
     forAll(sources_, i)
@@ -100,6 +101,7 @@ bool Foam::refinementControllers::uniformIntervals::update(const bool& force)
     {
         // Update next refinement time
         updateTime_ = mesh_.time().value() + intervalTime_;
+	refIndex_ = mesh_.time().timeIndex();
 
         //- Set initial refinement field in base class
         refinementController::setRefinementField();

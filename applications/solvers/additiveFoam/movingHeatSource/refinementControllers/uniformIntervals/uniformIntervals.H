@@ -80,7 +80,10 @@ protected:
         scalar updateTime_;
 
         //- Last refinement time, beyond which, no refinement occurs
-        scalar endTime_;       
+        scalar endTime_;
+
+        //- Time index of last refinement
+	label refIndex_;	
 
 public:
 

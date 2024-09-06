@@ -47,12 +47,14 @@ Foam::refinementControllers::ROAMR::ROAMR
     uniformIntervals(sources, dict, mesh, true),
 
     coeffs_(refinementDict_.optionalSubDict(typeName + "Coeffs")),
-    cellsPerProc_(coeffs_.lookupOrDefault<int>("cellsPerProc", 10000))
+    cellsPerProc_(coeffs_.lookupOrDefault<int>("cellsPerProc", 10000)),
+    hCoarse_(coeffs_.lookup<scalar>("hCoarse"))
 {
     //- Get average cell volume and cross-sectional area
     label totalCells = mesh_.nCells();
     reduce(totalCells, sumOp<label>());
-    scalar vAvg = gSum(mesh_.V()) / totalCells;
+    //scalar vAvg = gSum(mesh_.V()) / totalCells;
+    scalar vAvg = Foam::pow(hCoarse_, 3.0);
     
     //- Find longest path and estimate total scan area
     scalar maxLen = 0.0;
@@ -125,6 +127,8 @@ bool Foam::refinementControllers::ROAMR::update(const bool& force)
     //- Force an update if ratio is off by +/- 20% or more 
     bool forceUpdate = false;
 
+    if (mesh_.time().timeIndex() > (refIndex_ + nLevels_ + 1))
+    {
     if ((ratio > 1.2) || (ratio < 0.8))
     {
         //- Only force update if the current interval is larger than the
@@ -149,13 +153,14 @@ bool Foam::refinementControllers::ROAMR::update(const bool& force)
             }
         }
     }
+    }
     
     //- Update if mesh time equals update time or if the forceUpdate flag is
     //  set due to an improperly sized mesh
     if ((updateTime_ - mesh_.time().value() < small) || (forceUpdate))
     {
         //- Guard against rescaling until full refinement is reached
-        if (mesh_.time().timeIndex() >= nLevels_ + 1)
+        if (mesh_.time().timeIndex() >= (refIndex_ + nLevels_ + 1))
         {
             //- Scale interval size based on current cells/proc
             scalar totalCells = mesh_.nCells();
