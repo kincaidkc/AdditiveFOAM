@@ -68,6 +68,7 @@ Foam::refinementControllers::dynamicIntervals::dynamicIntervals
     cellsPerProc_(coeffs_.lookupOrDefault<label>("cellsPerProc", 5000)),
     hCoarse_(coeffs_.lookup<scalar>("hCoarse")),
     totalCells_(cellsPerProc_ * Pstream::nProcs()),
+    nCells0_(0),
     updateTime_(0.0),
     endTime_(0.0)
 {
@@ -78,6 +79,8 @@ Foam::refinementControllers::dynamicIntervals::dynamicIntervals
     }
 
     endTime_ = min(endTime_, mesh.time().endTime().value());
+    
+    nCells0_ = mesh_.nCells();
 }
 
 
@@ -156,15 +159,15 @@ bool Foam::refinementControllers::dynamicIntervals::update(const bool& force)
         //- Estimate number of cells required to refine regions marked 
         //  based on temperature and current beam position
         scalar vRef = fvc::domainIntegrate(refinementField_).value();
-        scalar nCells = vRef / Foam::pow(hCoarse_, 3.0) * cellsAdded;
+        scalar nRef = vRef / Foam::pow(hCoarse_, 3.0) * cellsAdded;
                         
-        scalar estCells = mesh_.nCells() + nCells;
+        scalar nTot = nCells0_ + nRef;
         
         scalar time_ = mesh_.time().value();
         
         //- Mark cells ahead of beam for refinement until estimated mesh size
         //  is equal to desired mesh size
-        while (estCells < totalCells_)
+        while (nTot < totalCells_)
         {
             //- Find minimum time step for all beams
             scalar dt_ = 0.0;
@@ -233,13 +236,13 @@ bool Foam::refinementControllers::dynamicIntervals::update(const bool& force)
                         else if (cellBbs[celli].overlaps(beamBb))
                         {
                             refinementField_[celli] = 1;
-                            estCells += cellsAdded;
+                            nTot += cellsAdded;
                         }
                     }
                 }
             }
             
-            Info << "Estimated mesh size: " << estCells << endl;
+            Info << "Estimated mesh size: " << nTot << endl;
             
             refinementField_.correctBoundaryConditions(); 
         }

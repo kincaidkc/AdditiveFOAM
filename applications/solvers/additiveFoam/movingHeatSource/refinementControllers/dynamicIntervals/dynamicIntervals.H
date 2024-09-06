@@ -79,6 +79,9 @@ protected:
         //- Target number of cells in mesh
         label totalCells_;
         
+        //- Original mesh size
+        label nCells0_;
+        
         //- Time for next update
         scalar updateTime_;
 
