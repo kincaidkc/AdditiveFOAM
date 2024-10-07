@@ -43,10 +43,10 @@ refinementControl
     refine                  true;
     nLevels                 2;
     
-    refinementTemperature   1400;
+    refinementTemperature   1200;
         
-    refinementController    none;
-    //refinementController    uniformIntervals;
+    //refinementController    none;
+    refinementController    uniformIntervals;
     //refinementController    ROAMR;
     
     uniformIntervalsCoeffs
