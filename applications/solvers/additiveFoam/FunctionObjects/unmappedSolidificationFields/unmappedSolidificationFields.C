@@ -134,7 +134,7 @@ bool Foam::functionObjects::unmappedSolidificationFields::execute()
     R_ = fvc::ddt(T_);
 
     //- Calculate the thermal gradient
-    //const volScalarField G = mag(fvc::grad(T_));
+    const volScalarField G("G", mag(fvc::grad(T_)));
     
     //- Calculate refined mesh volume
     const scalar Vr = Foam::pow(1.1 * refinedSize_, 3.0);
@@ -159,14 +159,14 @@ bool Foam::functionObjects::unmappedSolidificationFields::execute()
         {
             vector C = mesh_.C()[celli];
 
-            List<scalar> eventi(5);
+            List<scalar> eventi(6);
 
             eventi[0] = C[0];
             eventi[1] = C[1];
             eventi[2] = C[2];
             eventi[3] = time;
             eventi[4] = R_.oldTime()[celli];
-            //eventi[5] = G[celli];
+            eventi[5] = G[celli];
 
             events_.append(eventi);
             
