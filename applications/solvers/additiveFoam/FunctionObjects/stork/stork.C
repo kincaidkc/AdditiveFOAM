@@ -75,6 +75,7 @@ void Foam::functionObjects::stork::correct()
     // Update indexing for stork cell model
     const pointField& points = mesh_.points();
     
+    // Fully refined cells will have a "hex" cell shape
     const cellModel& hex = *(cellModeller::lookup("hex"));
     
     forAll(mesh_.cells(), celli)
@@ -146,7 +147,7 @@ Foam::functionObjects::stork::stork
             mesh_.time().name(),
             mesh_,
             IOobject::READ_IF_PRESENT,
-            IOobject::NO_WRITE
+            IOobject::AUTO_WRITE
         ),
         vpi_.interpolate(T_)
     ),
@@ -287,141 +288,192 @@ bool Foam::functionObjects::stork::execute()
 
 bool Foam::functionObjects::stork::end()
 {
-    events.shrink();
-    
-    const uint32_t nEvents = returnReduce(events.size(), sumOp<scalar>());
-
-    labelVector extent(0, 0, 0);
-        
-    for (const auto& event : events)
+    if (!mesh_.time().writeTime())
     {
-        extent.x() = max(extent.x(), event[0]);
-        extent.y() = max(extent.y(), event[1]);
-        extent.z() = max(extent.z(), event[2]);
+        write();
     }
-    reduce(extent, maxOp<labelVector>());
-    
-    extent[0] = extent[0] + 2;
-    extent[1] = extent[1] + 2;
-    extent[2] = extent[2] + 2;
-    
-    Info<< "Solidification Events:" << endl;
-    Info<< "    Size:\t" << nEvents << endl;    
-    Info<< "    Index Span:\t" << extent << endl;
-    Info<< "    Reference Point:\t" << referenceBb.min() << endl;
-    
-    /*
-    //- Stork serial csv writer: only use for debugging
-    OFstream os
-    (
-        storkPath + "/" + "stork_.csv"
-    );
-
-    for(int i=0; i < events.size(); i++)
-    {
-        int n = events[i].size() - 1;
-
-        for(int j=0; j < n; j++)
-        {
-            os << events[i][j] << ",";
-        }
-        os << events[i][n] << "\n";
-    }
-    */
-
-    //- Stork binary writer
-    const fileName storkPath
-    (
-        mesh_.time().rootPath()/mesh_.time().globalCaseName()/"Stork"
-    );
-
-    mkDir(storkPath);
-        
-    //- write header file   
-    if (Pstream::master())
-    {
-        std::ofstream os
-        (
-            storkPath + "/" + "stork.bin", 
-            std::ios::binary
-        );
-
-        const uint32_t uint32Header[4] =
-            {
-                static_cast<uint32_t>(nEvents),
-                static_cast<uint32_t>(extent[0] + 2),
-                static_cast<uint32_t>(extent[1] + 2),
-                static_cast<uint32_t>(extent[2] + 2)
-            };
-        
-        const float floatHeader[5] =
-            {
-                static_cast<float>(referenceBb.min().x()),
-                static_cast<float>(referenceBb.min().y()),
-                static_cast<float>(referenceBb.min().z()),
-                static_cast<float>(spacing_),
-                static_cast<float>(isoValue_)
-            };
-
-        os.write
-        (
-            reinterpret_cast<const char*> (&uint32Header),
-            4 * sizeof(uint32_t)
-        );
-
-        os.write
-        (
-            reinterpret_cast<const char*> (&floatHeader),
-            5 * sizeof(float)
-        );
-        
-        os.close();
-    }
-
-    //- write data
-    {
-        std::ofstream os
-        (
-            storkPath + "/stork_" + Foam::name(Pstream::myProcNo()) + ".bin",
-            std::ios::binary
-        );
-        
-        for (const auto& event : events)
-        {
-            for (int i=0; i < 3; i++)
-            {
-                uint32_t e = static_cast<uint32_t>(event[i]);
-                os.write(reinterpret_cast<const char*> (&e), sizeof(uint32_t));
-            }
-        }
-
-        for (const auto& event : events)
-        {
-            for (int i=3; i < 5; i++)
-            {
-                float ef = static_cast<float>(event[i]);
-                os.write(reinterpret_cast<const char*> (&ef), sizeof(float));
-            }
-        }
-
-        for (const auto& event : events)
-        {
-            for (int i=5; i < 21; i++)
-            {
-                float ef = static_cast<float>(event[i]);
-                os.write(reinterpret_cast<const char*> (&ef), sizeof(float));
-            }
-        }
-
-        os.close();
-    }
-    
+     
     return true;
 }
 
 
 bool Foam::functionObjects::stork::write()
 {
+    if (mesh_.time().writeTime())
+    {
+        events.shrink();
+                
+        const uint32_t nEvents = returnReduce(events.size(), sumOp<scalar>());
+        
+        if (nEvents == 0)
+        {
+            return true;    // no solidification events: skip time step
+        }
+
+        labelVector localMin = labelVector::max;
+        labelVector localMax = labelVector::min;
+                   
+        for (const auto& event : events)
+        {
+            localMin.x() = min(localMin.x(), event[0]);
+            localMin.y() = min(localMin.y(), event[1]);
+            localMin.z() = min(localMin.z(), event[2]);
+
+            localMax.x() = max(localMax.x(), event[0]);
+            localMax.y() = max(localMax.y(), event[1]);
+            localMax.z() = max(localMax.z(), event[2]);           
+            
+        }
+        labelVector globalMin = returnReduce(localMin, minOp<labelVector>());
+        labelVector globalMax = returnReduce(localMax, maxOp<labelVector>());
+                
+        Info<< "Solidification Events:" << endl;
+        Info<< "    Global Size:\t" << nEvents << endl;    
+        Info<< "    Index Span:\t" << globalMax - globalMin << endl;
+        Info<< "    Reference Point:\t" << referenceBb.min() << endl;
+        
+        //- Stork binary writer
+        const fileName path_
+        (
+            mesh_.time().rootPath()/mesh_.time().globalCaseName()/"Stork"
+           /mesh_.time().name()
+        );
+
+        mkDir(path_);
+                
+        //- write global header file   
+        if (Pstream::master())
+        {
+            std::ofstream os
+            (
+                path_ + "/info.bin", 
+                std::ios::binary
+            );
+
+            const uint32_t uint32Header[7] =
+                {
+                    static_cast<uint32_t>(nEvents),
+                    static_cast<uint32_t>(globalMin[0]),
+                    static_cast<uint32_t>(globalMin[1]),
+                    static_cast<uint32_t>(globalMin[2]),
+                    static_cast<uint32_t>(globalMax[0]),
+                    static_cast<uint32_t>(globalMax[1]),
+                    static_cast<uint32_t>(globalMax[2])
+                };
+            
+            const float floatHeader[5] =
+                {
+                    static_cast<float>(referenceBb.min().x()),
+                    static_cast<float>(referenceBb.min().y()),
+                    static_cast<float>(referenceBb.min().z()),
+                    static_cast<float>(spacing_),
+                    static_cast<float>(isoValue_)
+                };
+
+            os.write
+            (
+                reinterpret_cast<const char*> (&uint32Header),
+                7 * sizeof(uint32_t)
+            );
+
+            os.write
+            (
+                reinterpret_cast<const char*> (&floatHeader),
+                5 * sizeof(float)
+            );
+            
+            os.close();
+        }
+        
+        //- write data
+        if (events.size() > 0)
+        {
+            std::ofstream os
+            (
+                path_ + "/processor"
+              + Foam::name(Pstream::myProcNo()) + ".bin",
+                std::ios::binary
+            );
+            
+            //- local header
+            const uint32_t uint32Header[7] =
+                {
+                    static_cast<uint32_t>(events.size()),
+                    static_cast<uint32_t>(localMin[0]),
+                    static_cast<uint32_t>(localMin[1]),
+                    static_cast<uint32_t>(localMin[2]),
+                    static_cast<uint32_t>(localMax[0]),
+                    static_cast<uint32_t>(localMax[1]),
+                    static_cast<uint32_t>(localMax[2])
+                };
+            
+            const float floatHeader[5] =
+                {
+                    static_cast<float>(referenceBb.min().x()),
+                    static_cast<float>(referenceBb.min().y()),
+                    static_cast<float>(referenceBb.min().z()),
+                    static_cast<float>(spacing_),
+                    static_cast<float>(isoValue_)
+                };
+
+            os.write
+            (
+                reinterpret_cast<const char*> (&uint32Header),
+                7 * sizeof(uint32_t)
+            );
+
+            os.write
+            (
+                reinterpret_cast<const char*> (&floatHeader),
+                5 * sizeof(float)
+            );
+            
+            //- local data
+            for (const auto& event : events)
+            {
+                for (int i=0; i < 3; i++)
+                {
+                    uint32_t e = static_cast<uint32_t>(event[i]);
+                    os.write
+                    (
+                        reinterpret_cast<const char*> (&e),
+                        sizeof(uint32_t)
+                    );
+                }
+            }
+
+            for (const auto& event : events)
+            {
+                for (int i=3; i < 5; i++)
+                {
+                    float ef = static_cast<float>(event[i]);
+                    os.write
+                    (
+                        reinterpret_cast<const char*> (&ef),
+                        sizeof(float)
+                    );
+                }
+            }
+
+            for (const auto& event : events)
+            {
+                for (int i=5; i < 21; i++)
+                {
+                    float ef = static_cast<float>(event[i]);
+                    os.write
+                    (
+                        reinterpret_cast<const char*> (&ef),
+                        sizeof(float)
+                    );
+                }
+            }
+
+            os.close();
+        }
+        
+        events.setSize(0);
+    }
+
     return true;
 }
 
