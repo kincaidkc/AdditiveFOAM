@@ -1,0 +1,3 @@
+stork.C
+
+LIB = $(FOAM_USER_LIBBIN)/libStorkFunctionObject
