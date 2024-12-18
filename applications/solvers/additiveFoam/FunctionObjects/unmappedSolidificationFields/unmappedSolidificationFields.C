@@ -223,7 +223,7 @@ bool Foam::functionObjects::unmappedSolidificationFields::write()
     const fileName currTimePath(mesh_.time().rootPath()
                                 /mesh_.time().globalCaseName()
                                 /"unmappedSolidificationFields"/currTime);
-
+                                
     mkDir(currTimePath);
 
     //- Open file for each proc
@@ -247,6 +247,30 @@ bool Foam::functionObjects::unmappedSolidificationFields::write()
     }
 
     solidificationEvents_.clear();
+    
+    if (trackMelting_)
+    {
+        const fileName meltingDir(currTimePath/"meltingEvents");
+        
+        mkDir(meltingDir);
+        
+        OFstream mos(meltingDir + "/" + "data_"
+                     + Foam::name(Pstream::myProcNo()) + ".csv");
+                     
+        mos << "x,y,z,t\n";
+        
+        for (int i = 0; i < meltingEvents_.size(); ++i)
+        {
+            int n = meltingEvents_[i].size() - 1;
+
+            for (int j = 0; j < n; ++j)
+            {
+                os << meltingEvents_[i][j] << ",";
+            }
+
+            os << meltingEvents_[i][n] << "\n";
+        }
+    }
 
     return true;
 }
