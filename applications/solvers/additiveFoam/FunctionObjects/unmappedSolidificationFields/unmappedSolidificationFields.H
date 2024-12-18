@@ -36,9 +36,11 @@ Description
     \verbatim
     unmappedSolidificationFields1
     {
-        type           unmappedSolidificationFields;
+        type            unmappedSolidificationFields;
         
-        libs           ("libadditiveFoamFunctionObjects.so");
+        libs            ("libadditiveFoamFunctionObjects.so");
+        
+        writeControl    writeTime;
         
         AMR             true;
         refinedSize     10e-6;

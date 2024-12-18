@@ -239,6 +239,10 @@ bool Foam::functionObjects::timeAboveMelting::write()
 
         events_.clear();
     }
+    else
+    {
+        TAM_.write();
+    }
 
     return true;
 }

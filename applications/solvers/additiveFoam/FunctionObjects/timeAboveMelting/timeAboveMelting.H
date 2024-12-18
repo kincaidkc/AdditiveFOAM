@@ -29,9 +29,11 @@ Description
     \verbatim
     timeAboveMelting1
     {
-        type           timeAboveMelting;
+        type            timeAboveMelting;
         
-        libs           ("libadditiveFoamFunctionObjects.so");
+        libs            ("libadditiveFoamFunctionObjects.so");
+        
+        writeControl    writeTime;
         
         AMR             true;
         refinedSize     10e-6;

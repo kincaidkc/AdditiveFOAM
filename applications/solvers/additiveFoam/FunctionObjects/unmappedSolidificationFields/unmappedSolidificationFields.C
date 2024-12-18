@@ -172,7 +172,7 @@ bool Foam::functionObjects::unmappedSolidificationFields::execute()
         }
         
         //- Check for melting events if trackMelting is set
-        if (trackMelting_ && (T0[celli] > Tl_) && (T_[celli] <= Tl_) && (maxLevel))
+        if (trackMelting_ && (T0[celli] < Tl_) && (T_[celli] >= Tl_) && (maxLevel))
         {
             vector C = mesh_.C()[celli];
             
