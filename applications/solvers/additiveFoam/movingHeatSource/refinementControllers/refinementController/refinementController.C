@@ -142,8 +142,10 @@ Foam::refinementController::refinementController
 void Foam::refinementController::refineUsingTemperature()
 {
     const volScalarField& T = mesh_.lookupObject<volScalarField>("T");
+    
+    const dimensionedScalar Tr(dimTemperature, refinementTemperature_);
 
-    refinementField_ = pos0(T - refinementTemperature_);
+    refinementField_ = pos0(T - Tr);
 
     refinementField_.correctBoundaryConditions();
 }
