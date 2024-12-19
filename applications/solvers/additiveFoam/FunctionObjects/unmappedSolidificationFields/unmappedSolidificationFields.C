@@ -142,18 +142,16 @@ bool Foam::functionObjects::unmappedSolidificationFields::execute()
     forAll(mesh_.C(), celli)
     {
         //- Check that cells are in max refinement level for AMR cases
-        bool maxLevel = true;
-
         if (AMR_)
         {
             if (mesh_.V()[celli] > Vr)
             {
-                maxLevel = false;
+                continue;
             }
         }
 
         //- Check for solidification events
-        if ((T0[celli] > Tl_) && (T_[celli] <= Tl_) && (maxLevel))
+        if ((T0[celli] > Tl_) && (T_[celli] <= Tl_))
         {
             vector C = mesh_.C()[celli];
 
@@ -172,7 +170,7 @@ bool Foam::functionObjects::unmappedSolidificationFields::execute()
         }
         
         //- Check for melting events if trackMelting is set
-        if (trackMelting_ && (T0[celli] < Tl_) && (T_[celli] >= Tl_) && (maxLevel))
+        if (trackMelting_ && (T0[celli] < Tl_) && (T_[celli] >= Tl_))
         {
             vector C = mesh_.C()[celli];
             
