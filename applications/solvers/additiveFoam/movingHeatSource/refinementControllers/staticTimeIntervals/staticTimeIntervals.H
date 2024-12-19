@@ -9,31 +9,38 @@
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
+
     OpenFOAM is free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
+
     OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
     ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
     FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
     for more details.
+
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
+
 Class
-    Foam::refinementControllers::ROAMR
+    Foam::refinementControllers::staticTimeIntervals
+
 Description
     This refinement control scheme divides the simulation into an even
     number of intervals equal to the simulation end time divided by the
     number of intervals. Refinement for each beam is carried out on each
     interval.
+
 SourceFiles
-    ROAMR.C
+    staticTimeIntervals.C
+
 \*---------------------------------------------------------------------------*/
 
-#ifndef ROAMR_H
-#define ROAMR_H
+#ifndef staticTimeIntervals_H
+#define staticTimeIntervals_H
 
-#include "uniformIntervals.H"
+#include "refinementController.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -43,35 +50,41 @@ namespace refinementControllers
 {
 
 /*---------------------------------------------------------------------------*\
-                             Class ROAMR
+                            Class staticTimeIntervals
 \*---------------------------------------------------------------------------*/
 
-class ROAMR
+class staticTimeIntervals
 :
-    public uniformIntervals
+    public refinementController
 {
     // Private Data
-
+    
         //- Dictionary
         dictionary coeffs_;
+        
+protected:
 
-        //- Target cells per processor (default 20k)
-        int cellsPerProc_;
-
-        //- Minimum interval time to maintain at least
-        //  D4sigma between refinements
-        scalar minIntervalTime_;
+    //- Protected data
+        
+        //- Number of intervals
+        scalar intervals_;
+        
+        //- Time duration of each interval
+        scalar intervalLength_;
+        
+        //- Time for next update
+        scalar updateTime_;  
 
 public:
 
     //- Runtime type information
-    TypeName("ROAMR");
+    TypeName("staticTimeIntervals");
 
 
     // Constructors
 
         //- Construct from components
-        ROAMR
+        staticTimeIntervals
         (
             const PtrList<heatSourceModel>& sources,
             const dictionary& dict,
@@ -80,14 +93,14 @@ public:
 
 
     //- Destructor
-    virtual ~ROAMR()
+    virtual ~staticTimeIntervals()
     {}
 
 
     // Member Functions
 
         //- Update the refinement marker field and return true at each interval
-        virtual bool update(const bool& force = false);
+        virtual bool update();
 
         //- Read the heatSourceProperties dictionary
         virtual bool read();
