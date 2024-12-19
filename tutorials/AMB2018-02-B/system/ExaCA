@@ -9,7 +9,7 @@
 ExaCA
 {
     type ExaCA;
-    libs ("libExaCAFunctionObject.so");
+    libs ("libadditiveFoamFunctionObjects.so");
 }
 
 // *********************************************************************** //

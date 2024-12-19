@@ -1,0 +1,5 @@
+ExaCA/ExaCA.C
+timeAboveMelting/timeAboveMelting.C
+unmappedSolidificationFields/unmappedSolidificationFields.C
+
+LIB = $(FOAM_USER_LIBBIN)/libadditiveFoamFunctionObjects
