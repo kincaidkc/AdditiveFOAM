@@ -80,7 +80,7 @@ Foam::functionObjects::timeAboveMelting::timeAboveMelting
             mesh_.time().timeName(),
             mesh_,
             IOobject::READ_IF_PRESENT,
-            AMR_ ? IOobject::AUTO_WRITE : IOobject::NO_WRITE
+            AMR_ ? IOobject::NO_WRITE : IOobject::AUTO_WRITE
         ),
         mesh_,
         dimensionedScalar(dimTime, 0.0)
@@ -238,10 +238,6 @@ bool Foam::functionObjects::timeAboveMelting::write()
         }
 
         events_.clear();
-    }
-    else
-    {
-        TAM_.write();
     }
 
     return true;
