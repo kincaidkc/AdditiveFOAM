@@ -181,7 +181,7 @@ void Foam::refinementController::refineUsingTime(const Foam::scalar& refineTime)
         
         scalar time_ = mesh_.time().value();
 
-        vector offset_ = 1.5*sources_[i].dimensions();
+        vector offset_ = max(buffer_, 1.5*sources_[i].dimensions());
 
         while ((min(beam_.endTime(), refineTime) - time_) > small)
         {
@@ -189,8 +189,8 @@ void Foam::refinementController::refineUsingTime(const Foam::scalar& refineTime)
 
             treeBoundBox beamBb
             (
-                position_ - min(offset_, buffer_),
-                position_ + max(offset_, buffer_)
+                position_ - offset_,
+                position_ + offset_
             );
             
             forAll(mesh_.cells(), celli)
