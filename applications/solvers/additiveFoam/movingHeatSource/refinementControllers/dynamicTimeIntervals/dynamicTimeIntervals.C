@@ -168,6 +168,8 @@ bool Foam::refinementControllers::dynamicTimeIntervals::update()
         intervalLength_
             = relax_ * cellsPerProc_ / currCellsPerProc * intervalLength_
               + (1.0 - relax_) * intervalLength_;
+              
+        intervalLength_ = max(intervalLength_, minIntervalTime_);
         
         //- Update next refinement time
         updateTime_ = mesh_.time().value() + intervalLength_;
