@@ -24,21 +24,24 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::refinementControllers::uniformIntervals
+    Foam::refinementControllers::dynamicTimeIntervals
 
 Description
-    This refinement control scheme divides the simulation into an even
-    number of intervals equal to the simulation end time divided by the
-    number of intervals. Refinement for each beam is carried out on each
-    interval.
+    This refinement control scheme divides the simulation into sub-intervals
+    on which to perform refinement operation. At the start of a new interval,
+    the length of the new interval is adjusted to target a specified CPU
+    load, in terms of cells per processor. The adjustment is performed using
+    the observed CPU load from the previous interval. Relaxation of the
+    interval size adjustment is provided to limit oscillations in interval
+    and mesh size.
 
 SourceFiles
-    uniformIntervals.C
+    dynamicTimeIntervals.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef uniformIntervals_H
-#define uniformIntervals_H
+#ifndef dynamicTimeIntervals_H
+#define dynamicTimeIntervals_H
 
 #include "refinementController.H"
 
@@ -50,10 +53,10 @@ namespace refinementControllers
 {
 
 /*---------------------------------------------------------------------------*\
-                             Class uniformIntervals
+                           Class dynamicTimeIntervals
 \*---------------------------------------------------------------------------*/
 
-class uniformIntervals
+class dynamicTimeIntervals
 :
     public refinementController
 {
@@ -66,49 +69,47 @@ protected:
 
     //- Protected data
         
-        //- Number of intervals
-        scalar intervals_;
+        //- Target cells per processor (default 10k)
+        const int cellsPerProc_;
         
-        //- User-defined bounding box for refinement around moving beam
-        //- Defaults to an inverted bounding box that is updated for each beam
-        boundBox boundingBox_;
+        //- Relaxation factor for interval adjustment (default 0.9)
+        const scalar relax_;
         
-        //- Time duration of each interval
-        scalar intervalTime_;
+        //- Minimum time to maintain at least D4sigma between refinements
+        scalar minIntervalTime_;
         
-        //- Time for next update
+        //- Length of current interval
+        scalar intervalLength_;
+        
+        //- Time at which to update again
         scalar updateTime_;
-
-        //- Last refinement time, beyond which, no refinement occurs
-        scalar endTime_;       
 
 public:
 
     //- Runtime type information
-    TypeName("uniformIntervals");
+    TypeName("dynamicTimeIntervals");
 
 
     // Constructors
 
         //- Construct from components
-        uniformIntervals
+        dynamicTimeIntervals
         (
             const PtrList<heatSourceModel>& sources,
             const dictionary& dict,
-            const fvMesh& mesh,
-            const bool& roamr = false
+            const fvMesh& mesh
         );
 
 
     //- Destructor
-    virtual ~uniformIntervals()
+    virtual ~dynamicTimeIntervals()
     {}
 
 
     // Member Functions
 
         //- Update the refinement marker field and return true at each interval
-        virtual bool update(const bool& force = false);
+        virtual bool update();
 
         //- Read the heatSourceProperties dictionary
         virtual bool read();

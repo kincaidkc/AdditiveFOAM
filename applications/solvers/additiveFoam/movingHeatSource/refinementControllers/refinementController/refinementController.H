@@ -91,6 +91,12 @@ protected:
 
         //- Temperature above which refinement occurs
         scalar refinementTemperature_;
+        
+        //- Distance in (x, y, z) direction to refine from beam center
+        vector buffer_;
+        
+        //- End time of last beam
+        scalar endTime_;
 
         //- Marker field for refinement operations
         volScalarField refinementField_;
@@ -156,10 +162,13 @@ public:
         };
         
         //- Set refinementField using temperature constraints
-        virtual void setRefinementField();
+        virtual void refineUsingTemperature();
+        
+        //- Refine along scan path until specified time
+        virtual void refineUsingTime(const scalar& refineTime);
     
-        //- Update refinementField and return true at specified time
-        virtual bool update(const bool& force = false) = 0;
+        //- Update refinementField
+        virtual bool update() = 0;
 
         //- Read the heat source dictionary
         virtual bool read() = 0;

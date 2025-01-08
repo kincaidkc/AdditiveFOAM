@@ -40,16 +40,18 @@ beam
 refinementControl
 {
     refine                  true;
+    
     nLevels                 2;
     
-    refinementTemperature   1e15;//1250;
+    refinementTemperature   1250;
     
-    refinementController    uniformIntervals;
+    refinementController    staticTimeIntervals;
     
-    uniformIntervalsCoeffs
+    staticTimeIntervalsCoeffs
     {
         intervals   20;
-        //boundingBox (-50e-6 -50e-6 -50e-6) (50e-6 50e-6 0);
+        
+        buffer      (80e-6 80e-6 100e-6);
     }
 }
 

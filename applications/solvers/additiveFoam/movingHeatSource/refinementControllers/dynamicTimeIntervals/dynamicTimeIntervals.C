@@ -9,19 +9,23 @@
 -------------------------------------------------------------------------------
 License
     This file is part of OpenFOAM.
+
     OpenFOAM is free software: you can redistribute it and/or modify it
     under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
+
     OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
     ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
     FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
     for more details.
+
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
+
 \*---------------------------------------------------------------------------*/
 
-#include "ROAMR.H"
+#include "dynamicTimeIntervals.H"
 #include "addToRunTimeSelectionTable.H"
 
 // * * * * * * * * * * * * * * Static Data Members * * * * * * * * * * * * * //
@@ -30,26 +34,38 @@ namespace Foam
 {
 namespace refinementControllers
 {
-    defineTypeNameAndDebug(ROAMR, 0);
-    addToRunTimeSelectionTable(refinementController, ROAMR, dictionary);
+    defineTypeNameAndDebug(dynamicTimeIntervals, 0);
+    addToRunTimeSelectionTable
+    (
+        refinementController,
+        dynamicTimeIntervals,
+        dictionary
+    );
 }
 }
 
 // * * * * * * * * * * * * * * * * Constructors  * * * * * * * * * * * * * * //
 
-Foam::refinementControllers::ROAMR::ROAMR
+Foam::refinementControllers::dynamicTimeIntervals::dynamicTimeIntervals
 (
     const PtrList<heatSourceModel>& sources,
     const dictionary& dict,
     const fvMesh& mesh
 )
 :
-    uniformIntervals(sources, dict, mesh, true),
-
+    refinementController(typeName, sources, dict, mesh),
     coeffs_(refinementDict_.optionalSubDict(typeName + "Coeffs")),
-    cellsPerProc_(coeffs_.lookupOrDefault<int>("cellsPerProc", 10000))
+    cellsPerProc_(coeffs_.lookupOrDefault<int>("cellsPerProc", 10000)),
+    relax_(coeffs_.lookupOrDefault<scalar>("relax", 0.9)),
+    minIntervalTime_(0.0),
+    intervalLength_(0.0),
+    updateTime_(0.0)
 {
-    //- Get average cell volume and cross-sectional area
+    //- Estimate the length of the first refinement interval by using the swept
+    //  volume of the beam(s) and refined cell volume to guess the mesh size
+    //  associated with a given volume.
+    
+    //- Get average un-refined cell volume and cross-sectional area
     label totalCells = mesh_.nCells();
     reduce(totalCells, sumOp<label>());
     scalar vAvg = gSum(mesh_.V()) / totalCells;
@@ -65,8 +81,8 @@ Foam::refinementControllers::ROAMR::ROAMR
         
         treeBoundBox beamBb
         (
-            min(vector::zero, boundingBox_.min()),
-            max(1.5 * sources_[i].dimensions(), boundingBox_.max())
+            min(-1.5 * sources_[i].dimensions(), -buffer_),
+            max(1.5 * sources_[i].dimensions(), buffer_)
         );
         
         point bbMin = beamBb.min();
@@ -80,88 +96,100 @@ Foam::refinementControllers::ROAMR::ROAMR
             4.0 * bbMaxDim
           * Foam::pow(Foam::pow(bbMax[2] - bbMin[2], 2.0), 0.5);
     }
-
-    //- Calculate maximum number of intervals or shortest interval
-    //  size to maintain at least 1 bounding box between updates
+    
+    //- Calculate maximum number of intervals or shortest interval size so
+    //  that each AMR interval will refine a distance of at least the beam
+    //  bounding box dimension.
     scalar maxIntervals = maxLen / maxDim;
     minIntervalTime_ = endTime_ / maxIntervals;
 
-    //- Calculate number of intervals to optimize cells per processor
+    //- Calculate number of intervals to reach target cells per processor
     scalar targetCells = Pstream::nProcs() * cellsPerProc_;
+    
+    scalar intervals = 0.0;
 
     if (targetCells > totalCells)
     {
-        intervals_ =
+        intervals =
             maxLen * scanArea / vAvg
           / (targetCells - totalCells)
           * (Foam::pow(2.0, 3.0 * nLevels_) - 1.0);
     }
-
+    
     //- Bound number of intervals between 1 and maxIntervals
-    intervals_ = max(min(intervals_, maxIntervals), 1.0);
-
-    Info << "Setting initial number of intervals to: " << intervals_ << endl;
-
+    intervals = max(min(intervals, maxIntervals), 1.0);
+    
     //- Set number of intervals in uniformIntervals class    
-    intervalTime_ = endTime_ / intervals_;
-
-    Info << "Setting initial interval time to: " << intervalTime_ << endl;
+    intervalLength_ = endTime_ / intervals;
+    
+    Info << "dynamicTimeIntervals: set first interval to " << intervalLength_
+         << " s, which corresponds to approx. " << intervals
+         << " total intervals." << endl;
 }
 
 
 // * * * * * * * * * * * * * * Member Functions  * * * * * * * * * * * * * * //
 
-bool Foam::refinementControllers::ROAMR::update(const bool& force)
+bool Foam::refinementControllers::dynamicTimeIntervals::update()
 {
     //- Update if mesh time equals update time
     //  OR if time index is equal to the max refinement level.
     //  This second condition adjusts the mesh after the guess at the first
     //  refinement interval size to prevent an overly long first interval.
     if ((updateTime_ - mesh_.time().value() < small)
-        ||
+      ||
         (mesh_.time().timeIndex() == nLevels_ + 1))
     {
-        //- Guard against rescaling until full refinement is reached
-        if (mesh_.time().timeIndex() >= nLevels_ + 1)
+        //- Refine in regions above specified temperature
+        refinementController::refineUsingTemperature();
+
+        //- Don't perform additional refinements if scan path is completed
+        if ((endTime_ - mesh_.time().value()) < small)
         {
-            //- Scale interval size based on current cells/proc
-            label totalCells = mesh_.nCells();
-            reduce(totalCells, sumOp<label>());
-            scalar currCellsPerProc = totalCells / Pstream::nProcs();
-
-            Info << "Current cells per processor: "
-                 << currCellsPerProc << endl;
-            Info << "Current interval time: " << intervalTime_ << endl;
-
-            //- Rescale interval time
-            scalar scale =
-                min(2.0, max(0.5, cellsPerProc_ / currCellsPerProc));
-            
-            intervalTime_ *= scale;
-            
-            //- Ensure interval time is above minimum time
-            intervalTime_ = max(intervalTime_, minIntervalTime_);
-            
-            Info << "New interval time: " << intervalTime_ << endl;
+            Info << "dynamicTimeIntervals: Scan path completed. Continuing AMR"
+                 << " checks for possible mesh coarsening" << endl;
+                 
+            updateTime_ = mesh_.time().value() + intervalLength_;
+                 
+            return true;
         }
-
-        //- Force update refinement field using uniform intervals functions
-        uniformIntervals::update(true);
+        
+        //- Calculate current CPU load (cells per processor)
+        label nCells = mesh_.nCells();
+        reduce(nCells, sumOp<label>());
+        scalar currCellsPerProc = nCells / Pstream::nProcs();
+        
+        Info << "dynamicTimeIntervals: Current CPU load is "
+             << currCellsPerProc
+             << " cells per processor, with an interval of length "
+             << intervalLength_ << " s." << endl;
+        
+        //- Rescale interval length
+        intervalLength_
+            = relax_ * cellsPerProc_ / currCellsPerProc * intervalLength_
+              + (1.0 - relax_) * intervalLength_;
+              
+        intervalLength_ = max(intervalLength_, minIntervalTime_);
+        
+        //- Update next refinement time
+        updateTime_ = mesh_.time().value() + intervalLength_;
+        
+        Info << "dynamicTimeIntervals: rescaled interval to "
+             << intervalLength_ << " s. Next update will occur at " 
+             << updateTime_ << "s. Updating AMR marker field." << endl;
+        
+        //- Update marker field using calculated update time
+        refinementController::refineUsingTime(updateTime_);
     }
 
     return true;
 }
 
 
-bool Foam::refinementControllers::ROAMR::read()
+bool Foam::refinementControllers::dynamicTimeIntervals::read()
 {
-    if (uniformIntervals::read())
+    if (refinementController::read())
     {
-        refinementDict_ = optionalSubDict(type() + "Coeffs");
-
-        //- Mandatory entries
-        refinementDict_.lookup("cellsPerProc") >> cellsPerProc_;
-
         return true;
     }
     else
