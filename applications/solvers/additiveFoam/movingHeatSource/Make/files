@@ -17,6 +17,7 @@ refinementControllers/refinementController/refinementControllerNew.C
 refinementControllers/noRefinementController/noRefinementController.C
 refinementControllers/staticTimeIntervals/staticTimeIntervals.C
 refinementControllers/dynamicTimeIntervals/dynamicTimeIntervals.C
+refinementControllers/refinementVolume/refinementVolume.C
 
 movingHeatSourceModel/movingHeatSourceModel.C
 

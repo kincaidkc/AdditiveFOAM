@@ -237,6 +237,152 @@ void Foam::refinementController::refineUsingTime(const Foam::scalar& refineTime)
     return;
 }
 
+
+Foam::dimensionedScalar Foam::refinementController::refineUsingVolume
+(
+    const Foam::dimensionedScalar& refineVol
+)
+{    
+    //- Set next refinement time to current time
+    scalar refTime = mesh_.time().value();
+    
+    //- Calculate the bounding box for each cell
+    List<treeBoundBox> cellBbs(mesh_.nCells());
+    const pointField& points = mesh_.points();
+    const vector extend = 1e-10 * vector::one;
+    
+    forAll(mesh_.cells(), celli)
+    {
+        treeBoundBox cellBb(point::max, point::min);
+
+        const labelList& vertices = mesh_.cellPoints()[celli];
+
+        forAll(vertices, j)
+        {
+            cellBb.min()
+                = min(cellBb.min(), points[vertices[j]] - extend);
+            cellBb.max()
+                = max(cellBb.max(), points[vertices[j]] + extend);
+        }
+
+        cellBbs[celli] = cellBb;
+    }
+    
+    //- Mark current positions of all beams for refinement
+    forAll(sources_, i)
+    {
+        const movingBeam& beam = sources_[i].beam();
+
+        vector offset = max(buffer_, 1.5 * sources_[i].dimensions());
+
+        vector position = beam.position(refTime);
+
+        treeBoundBox beamBb
+        (
+            position - offset,
+            position + offset
+        );
+        
+        forAll(mesh_.cells(), celli)
+        {
+            if (refinementField_[celli] > 0)
+            {
+                // Do nothing, cell already marked for refiment
+            }
+            else if (cellBbs[celli].overlaps(beamBb))
+            {
+                refinementField_[celli] = 1;
+            }
+        }
+        
+        refinementField_.correctBoundaryConditions();
+    }
+    
+    //- Get volume of refined field for current beam positions and other
+    //  functions, e.g. refineUsingTemperature
+    dimensionedScalar refVol = fvc::domainIntegrate(refinementField_);
+    
+    //- Find minimum time step for all beams
+    scalar dt = 0.0;
+    
+    forAll(sources_, i)
+    {
+        const movingBeam& beam = sources_[i].beam();
+        label index = beam.findIndex(refTime);
+        segment path = beam.getSegment(index);
+        scalar timeToNextPath = path.time() - refTime;
+
+        //- If the path end time is directly hit, step to next path
+        while (mag(timeToNextPath) < small)
+        {
+            index = index + 1;
+            path = beam.getSegment(index);
+            timeToNextPath = path.time() - refTime;
+        }
+
+        dt = timeToNextPath;
+
+        if (path.mode() == 0)
+        {
+            const scalar scanTime =
+                sources_[i].D2sigma() / path.parameter();
+
+            dt = min(dt, scanTime);
+        }
+    }
+    
+    //- March along scan path(s) and refine until target volume is reached
+    while (refVol < refineVol)
+    {
+        //- Check that end time not reached
+        if (refTime > endTime_)
+        {
+            break;
+        }
+        
+        scalar refVoli = 0.0;
+        
+        forAll(sources_, i)
+        {
+            const movingBeam& beam = sources_[i].beam();
+            
+            vector offset = max(buffer_, 1.5 * sources_[i].dimensions());
+            
+            vector position = beam.position(refTime);
+            
+            treeBoundBox beamBb
+            (
+                position - offset,
+                position + offset
+            );
+            
+            forAll(mesh_.cells(), celli)
+            {
+                if (refinementField_[celli] > 0)
+                {
+                    // Do nothing, cell already marked for refiment
+                }
+                else if (cellBbs[celli].overlaps(beamBb))
+                {
+                    refinementField_[celli] = 1;
+                    refVoli += mesh_.V()[celli];
+                }
+            }
+        }
+        
+        reduce(refVoli, sumOp<scalar>());
+        
+        refVol += refVoli;
+        
+        refTime += dt;
+    }
+    
+    refinementField_.correctBoundaryConditions();
+    
+    return dimensionedScalar(dimTime, refTime);
+}
+
+
 bool Foam::refinementController::read()
 {
     if (regIOobject::read())
