@@ -56,7 +56,11 @@ Foam::refinementControllers::refinementVolume::refinementVolume
     refinementController(typeName, sources, dict, mesh),
     coeffs_(refinementDict_.optionalSubDict(typeName + "Coeffs")),
     cellsPerProc_(coeffs_.lookupOrDefault<int>("cellsPerProc", 10000)),
-    unrefinedSize_(dimLength, coeffs_.lookup<scalar>("unrefinedSize")),
+    unrefinedSize_
+    (
+        dimLength,
+        coeffs_.lookupOrDefault<scalar>("unrefinedSize", -1.0)
+    ),
     refVol_(dimVolume, 0.0),
     updateTime_(dimTime, 0.0)
 {
@@ -77,6 +81,15 @@ Foam::refinementControllers::refinementVolume::refinementVolume
     //- Otherwise, estimate refined volume required to hit target mesh size
     else
     {
+        //- Estimate unrefined mesh size if not provided
+        if (unrefinedSize_.value() < 0.0)
+        {
+            unrefinedSize_ = gSum(mesh_.V()) / nCells0;
+            
+            Info << "refinementVolume: estimated unrefined mesh size "
+                 << "to be " << unrefinedSize_ << " m." << endl;
+        }
+        
         refVol_ = Foam::pow(unrefinedSize_, 3.0) * (targetCells - nCells0)
                   / (Foam::pow(2.0, 3.0 * nLevels_) - 1.0);
                   

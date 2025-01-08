@@ -108,6 +108,9 @@ Foam::refinementControllers::dynamicTimeIntervals::dynamicTimeIntervals
         if (unrefinedSize_ < 0.0)
         {
             unrefinedSize_ = gSum(mesh_.V()) / nCells0;
+            
+            Info << "dynamicTimeIntervals: estimated unrefined mesh size "
+                 << "to be " << unrefinedSize_ << " m." << endl;
         }
         
         //- Estimate volume of refined scan path to hit target mesh size
