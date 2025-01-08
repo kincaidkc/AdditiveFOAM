@@ -245,12 +245,12 @@ Foam::dimensionedScalar Foam::refinementController::refineUsingVolume
 {    
     //- Set next refinement time to current time
     scalar refTime = mesh_.time().value();
-    
+
     //- Calculate the bounding box for each cell
     List<treeBoundBox> cellBbs(mesh_.nCells());
     const pointField& points = mesh_.points();
     const vector extend = 1e-10 * vector::one;
-    
+
     forAll(mesh_.cells(), celli)
     {
         treeBoundBox cellBb(point::max, point::min);
@@ -267,11 +267,11 @@ Foam::dimensionedScalar Foam::refinementController::refineUsingVolume
 
         cellBbs[celli] = cellBb;
     }
-    
+
     //- Mark current positions of all beams for refinement and find
     //  minimum time step for all beams
     scalar dt = 0.0;
-    
+
     forAll(sources_, i)
     {
         //- Mark refinement field for beam at current time
@@ -286,7 +286,7 @@ Foam::dimensionedScalar Foam::refinementController::refineUsingVolume
             position - offset,
             position + offset
         );
-        
+
         forAll(mesh_.cells(), celli)
         {
             if (refinementField_[celli] > 0)
@@ -298,9 +298,9 @@ Foam::dimensionedScalar Foam::refinementController::refineUsingVolume
                 refinementField_[celli] = 1;
             }
         }
-        
+
         refinementField_.correctBoundaryConditions();
-        
+
         //- Find minimum time step
         label index = beam.findIndex(refTime);
         segment path = beam.getSegment(index);
@@ -324,11 +324,11 @@ Foam::dimensionedScalar Foam::refinementController::refineUsingVolume
             dt = min(dt, scanTime);
         }
     }
-    
+
     //- Get volume of refined field for current beam positions and other
     //  functions, e.g. refineUsingTemperature
     dimensionedScalar refVol = fvc::domainIntegrate(refinementField_);
-    
+
     //- March along scan path(s) and refine until target volume is reached
     while (refVol < refineVol)
     {
@@ -337,23 +337,23 @@ Foam::dimensionedScalar Foam::refinementController::refineUsingVolume
         {
             break;
         }
-        
+
         scalar refVoli = 0.0;
-        
+
         forAll(sources_, i)
         {
             const movingBeam& beam = sources_[i].beam();
-            
+
             vector offset = max(buffer_, 1.5 * sources_[i].dimensions());
-            
+
             vector position = beam.position(refTime);
-            
+
             treeBoundBox beamBb
             (
                 position - offset,
                 position + offset
             );
-            
+
             forAll(mesh_.cells(), celli)
             {
                 if (refinementField_[celli] > 0)
@@ -367,16 +367,16 @@ Foam::dimensionedScalar Foam::refinementController::refineUsingVolume
                 }
             }
         }
-        
+
         reduce(refVoli, sumOp<scalar>());
-        
+
         refVol += refVoli;
-        
+
         refTime += dt;
     }
-    
+
     refinementField_.correctBoundaryConditions();
-    
+
     return dimensionedScalar(dimTime, refTime);
 }
 

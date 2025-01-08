@@ -79,11 +79,10 @@ Foam::refinementControllers::dynamicTimeIntervals::dynamicTimeIntervals
         
         point bbMin = beamBb.min();
         point bbMax = beamBb.max();
-
-        const scalar bbMaxDim
-            = max(bbMax[0] - bbMin[0], bbMax[1] - bbMin[1]);
-
-        maxIntervals = max(maxIntervals, beamLength / bbMaxDim);
+        
+        const scalar bbMaxDim = max(bbMax[0] - bbMin[0], bbMax[1] - bbMin[1]);
+        
+        maxIntervals = max(maxIntervals, bbLen / bbMaxDim + bbSpots);
     }
     
     //- Set minimum interval time from the maximum number of intervals
