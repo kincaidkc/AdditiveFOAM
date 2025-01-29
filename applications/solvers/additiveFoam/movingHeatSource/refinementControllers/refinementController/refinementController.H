@@ -171,7 +171,8 @@ public:
         //  provided target. Returns time at which target is reached.
         virtual dimensionedScalar refineUsingVolume
         (
-            const dimensionedScalar& refineVol
+            const dimensionedScalar& refineVol,
+            const scalar& minIntervalTime = 0.0
         );
     
         //- Update refinementField

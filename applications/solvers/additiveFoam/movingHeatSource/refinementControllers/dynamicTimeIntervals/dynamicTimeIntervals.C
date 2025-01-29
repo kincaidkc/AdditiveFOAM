@@ -120,7 +120,12 @@ Foam::refinementControllers::dynamicTimeIntervals::dynamicTimeIntervals
               
         //- Refine first interval using volume estimate, and set next update
         //  time using the refinementController::refineUsingVolume function
-        updateTime_ = refinementController::refineUsingVolume(refVol).value();
+        updateTime_ =
+            refinementController::refineUsingVolume
+            (
+                refVol,
+                minIntervalTime_
+            ).value();
         
         intervalLength_
             = max(updateTime_ - mesh_.time().value(), minIntervalTime_);

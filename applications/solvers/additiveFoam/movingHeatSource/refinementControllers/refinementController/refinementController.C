@@ -240,11 +240,15 @@ void Foam::refinementController::refineUsingTime(const Foam::scalar& refineTime)
 
 Foam::dimensionedScalar Foam::refinementController::refineUsingVolume
 (
-    const Foam::dimensionedScalar& refineVol
+    const Foam::dimensionedScalar& refineVol,
+    const Foam::scalar& minIntervalTime
 )
 {    
     //- Set next refinement time to current time
     scalar refTime = mesh_.time().value();
+    
+    //- Find minimum refinement time
+    scalar minRefTime = refTime + minIntervalTime;
 
     //- Calculate the bounding box for each cell
     List<treeBoundBox> cellBbs(mesh_.nCells());
@@ -330,7 +334,7 @@ Foam::dimensionedScalar Foam::refinementController::refineUsingVolume
     dimensionedScalar refVol = fvc::domainIntegrate(refinementField_);
 
     //- March along scan path(s) and refine until target volume is reached
-    while (refVol < refineVol)
+    while ((refVol < refineVol) || (refTime < minRefTime))
     {
         //- Check that end time not reached
         if (refTime > endTime_)
