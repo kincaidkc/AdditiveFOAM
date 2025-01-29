@@ -91,11 +91,17 @@ private:
         //- Total length of path
         scalar totalLength_;
         
+        //- Number of spot melts
+        label nSpots_;
+        
         //- Time step used for heat source integration
         scalar deltaT_;
         
         //- Adjust solution time to hit path segment start times? (d = true)
         bool hitPathIntervals_;
+        
+        //- Print scan path info to log file
+        bool printScanPath_;
 
     // Static Data Members
 
@@ -173,6 +179,11 @@ public:
         inline scalar totalLength() const
         {
             return totalLength_;
+        }
+        
+        inline label nSpots() const
+        {
+            return nSpots_;
         }
 
         //- Return path end time

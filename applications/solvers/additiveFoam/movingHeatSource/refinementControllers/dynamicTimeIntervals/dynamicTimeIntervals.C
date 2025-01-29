@@ -72,12 +72,13 @@ Foam::refinementControllers::dynamicTimeIntervals::dynamicTimeIntervals
     
     //- Find longest path and estimate total scan area
     scalar maxLen = 0.0;
-    scalar maxDim = 0.0;
     scalar scanArea = 0.0;
+    scalar maxIntervals = 0.0;
 
     forAll(sources_, i)
     {
-        maxLen = max(sources_[i].beam().totalLength(), maxLen);
+        const scalar bbLen = sources_[i].beam().totalLength();
+        const label bbSpots = sources_[i].beam().nSpots();
         
         treeBoundBox beamBb
         (
@@ -88,9 +89,11 @@ Foam::refinementControllers::dynamicTimeIntervals::dynamicTimeIntervals
         point bbMin = beamBb.min();
         point bbMax = beamBb.max();
         
-        scalar bbMaxDim = max(bbMax[0] - bbMin[0], bbMax[1] - bbMin[1]);
-
-        maxDim = max(maxDim, bbMaxDim);
+        const scalar bbMaxDim = max(bbMax[0] - bbMin[0], bbMax[1] - bbMin[1]);
+        
+        maxIntervals = max(maxIntervals, bbLen / bbMaxDim + bbSpots);
+        
+        maxLen = max(maxLen, bbLen);
         
         scanArea +=
             4.0 * bbMaxDim
@@ -100,7 +103,6 @@ Foam::refinementControllers::dynamicTimeIntervals::dynamicTimeIntervals
     //- Calculate maximum number of intervals or shortest interval size so
     //  that each AMR interval will refine a distance of at least the beam
     //  bounding box dimension.
-    scalar maxIntervals = maxLen / maxDim;
     minIntervalTime_ = endTime_ / maxIntervals;
 
     //- Calculate number of intervals to reach target cells per processor

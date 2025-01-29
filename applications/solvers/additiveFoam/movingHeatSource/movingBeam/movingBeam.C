@@ -56,14 +56,19 @@ Foam::movingBeam::movingBeam
     power_(0.0),
     endTime_(0.0),
     totalLength_(0.0),
+    nSpots_(0),
     deltaT_(GREAT),
-    hitPathIntervals_(true)
+    hitPathIntervals_(true),
+    printScanPath_(false)
 {
     deltaT_ =
         beamDict_.lookupOrDefault<scalar>("deltaT", GREAT);
 
     hitPathIntervals_ =
         beamDict_.lookupOrDefault<bool>("hitPathIntervals", false);
+        
+    printScanPath_ =
+        beamDict_.lookupOrDefault<bool>("printScanPath", false);
 
     readPath();
 
@@ -279,6 +284,11 @@ void Foam::movingBeam::readPath()
             (
                 path_[i-1].time() + path_[i].parameter()
             );
+            
+            if (path_[i].power() > SMALL)
+            {
+                ++nSpots_;
+            }
         }
         else
         {
@@ -292,7 +302,10 @@ void Foam::movingBeam::readPath()
             );
         }
 
-        Info << i << tab << path_[i].time() << endl;
+        if (printScanPath_)
+        {
+            Info << i << tab << path_[i].time() << endl;
+        }
     }
 }
 
