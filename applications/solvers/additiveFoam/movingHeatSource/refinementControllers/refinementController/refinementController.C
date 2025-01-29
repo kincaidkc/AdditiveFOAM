@@ -331,10 +331,10 @@ Foam::dimensionedScalar Foam::refinementController::refineUsingVolume
 
     //- Get volume of refined field for current beam positions and other
     //  functions, e.g. refineUsingTemperature
-    dimensionedScalar refVol = fvc::domainIntegrate(refinementField_);
+    scalar refVol = fvc::domainIntegrate(refinementField_).value();
 
     //- March along scan path(s) and refine until target volume is reached
-    while ((refVol < refineVol) || (refTime < minRefTime))
+    while ((refVol < refineVol.value()) || (refTime < minRefTime))
     {
         //- Check that end time not reached
         if (refTime > endTime_)
