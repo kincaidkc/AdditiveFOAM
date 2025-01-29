@@ -68,7 +68,8 @@ Foam::refinementControllers::dynamicTimeIntervals::dynamicTimeIntervals
 
     forAll(sources_, i)
     {
-        const scalar beamLength = sources_[i].beam().totalLength();
+        const scalar bbLen = sources_[i].beam().totalLength();
+        const label bbSpots = sources_[i].beam().nSpots();
         
         treeBoundBox beamBb
         (
@@ -78,7 +79,7 @@ Foam::refinementControllers::dynamicTimeIntervals::dynamicTimeIntervals
         
         point bbMin = beamBb.min();
         point bbMax = beamBb.max();
-        
+
         const scalar bbMaxDim
             = max(bbMax[0] - bbMin[0], bbMax[1] - bbMin[1]);
 
