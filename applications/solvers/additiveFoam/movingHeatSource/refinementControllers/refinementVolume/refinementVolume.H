@@ -24,24 +24,21 @@ License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 
 Class
-    Foam::refinementControllers::dynamicTimeIntervals
+    Foam::refinementControllers::refinementVolume
 
 Description
-    This refinement control scheme divides the simulation into sub-intervals
-    on which to perform refinement operation. At the start of a new interval,
-    the length of the new interval is adjusted to target a specified CPU
-    load, in terms of cells per processor. The adjustment is performed using
-    the observed CPU load from the previous interval. Relaxation of the
-    interval size adjustment is provided to limit oscillations in interval
-    and mesh size.
+    This refinement control scheme marches along the scan path until the
+    volume of the refined region meets or exceeds a target value calculated
+    from the target mesh size, and the ratio of the volumes of the refined and
+    base-sized cells.
 
 SourceFiles
-    dynamicTimeIntervals.C
+    refinementVolume.C
 
 \*---------------------------------------------------------------------------*/
 
-#ifndef dynamicTimeIntervals_H
-#define dynamicTimeIntervals_H
+#ifndef refinementVolume_H
+#define refinementVolume_H
 
 #include "refinementController.H"
 
@@ -53,10 +50,10 @@ namespace refinementControllers
 {
 
 /*---------------------------------------------------------------------------*\
-                           Class dynamicTimeIntervals
+                           Class refinementVolume
 \*---------------------------------------------------------------------------*/
 
-class dynamicTimeIntervals
+class refinementVolume
 :
     public refinementController
 {
@@ -72,31 +69,25 @@ protected:
         //- Target cells per processor (default 10k)
         const int cellsPerProc_;
         
-        //- Relaxation factor for interval adjustment (default 0.9)
-        const scalar relax_;
+        //- Characteristic length of unrefined cells
+        dimensionedScalar unrefinedSize_;
         
-        //- Characteristic dimension of unrefined base mesh
-        scalar unrefinedSize_;
-        
-        //- Minimum time to maintain at least D4sigma between refinements
-        scalar minIntervalTime_;
-        
-        //- Length of current interval
-        scalar intervalLength_;
+        //- Target volume of refined region
+        dimensionedScalar refVol_;
         
         //- Time at which to update again
-        scalar updateTime_;
+        dimensionedScalar updateTime_;
 
 public:
 
     //- Runtime type information
-    TypeName("dynamicTimeIntervals");
+    TypeName("refinementVolume");
 
 
     // Constructors
 
         //- Construct from components
-        dynamicTimeIntervals
+        refinementVolume
         (
             const PtrList<heatSourceModel>& sources,
             const dictionary& dict,
@@ -105,7 +96,7 @@ public:
 
 
     //- Destructor
-    virtual ~dynamicTimeIntervals()
+    virtual ~refinementVolume()
     {}
 
 

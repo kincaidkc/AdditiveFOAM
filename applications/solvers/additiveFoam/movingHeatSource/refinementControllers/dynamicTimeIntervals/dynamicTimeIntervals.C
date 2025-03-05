@@ -57,22 +57,13 @@ Foam::refinementControllers::dynamicTimeIntervals::dynamicTimeIntervals
     coeffs_(refinementDict_.optionalSubDict(typeName + "Coeffs")),
     cellsPerProc_(coeffs_.lookupOrDefault<int>("cellsPerProc", 10000)),
     relax_(coeffs_.lookupOrDefault<scalar>("relax", 0.9)),
+    unrefinedSize_(coeffs_.lookupOrDefault<scalar>("unrefinedSize", -1.0)),
     minIntervalTime_(0.0),
     intervalLength_(0.0),
     updateTime_(0.0)
 {
-    //- Estimate the length of the first refinement interval by using the swept
-    //  volume of the beam(s) and refined cell volume to guess the mesh size
-    //  associated with a given volume.
-    
-    //- Get average un-refined cell volume and cross-sectional area
-    label totalCells = mesh_.nCells();
-    reduce(totalCells, sumOp<label>());
-    scalar vAvg = gSum(mesh_.V()) / totalCells;
-    
-    //- Find longest path and estimate total scan area
-    scalar maxLen = 0.0;
-    scalar scanArea = 0.0;
+    //- Search beams to find maximum number of intervals, corresponding to
+    //  the beam with the highest ratio of scan path length to beam width
     scalar maxIntervals = 0.0;
 
     forAll(sources_, i)
@@ -92,41 +83,59 @@ Foam::refinementControllers::dynamicTimeIntervals::dynamicTimeIntervals
         const scalar bbMaxDim = max(bbMax[0] - bbMin[0], bbMax[1] - bbMin[1]);
         
         maxIntervals = max(maxIntervals, bbLen / bbMaxDim + bbSpots);
-        
-        maxLen = max(maxLen, bbLen);
-        
-        scanArea +=
-            4.0 * bbMaxDim
-          * Foam::pow(Foam::pow(bbMax[2] - bbMin[2], 2.0), 0.5);
     }
     
-    //- Calculate maximum number of intervals or shortest interval size so
-    //  that each AMR interval will refine a distance of at least the beam
-    //  bounding box dimension.
+    //- Set minimum interval time from the maximum number of intervals
     minIntervalTime_ = endTime_ / maxIntervals;
-
-    //- Calculate number of intervals to reach target cells per processor
-    scalar targetCells = Pstream::nProcs() * cellsPerProc_;
     
-    scalar intervals = 0.0;
-
-    if (targetCells > totalCells)
+    //- Target mesh size
+    scalar targetCells = cellsPerProc_ * Pstream::nProcs();
+    
+    //- Find initial mesh size
+    scalar nCells0 = mesh_.nCells();
+    reduce(nCells0, sumOp<scalar>());
+    
+    //- Provide warning if target mesh size is smaller than initial mesh size
+    if (nCells0 > targetCells)
     {
-        intervals =
-            maxLen * scanArea / vAvg
-          / (targetCells - totalCells)
-          * (Foam::pow(2.0, 3.0 * nLevels_) - 1.0);
+        Info << "dynamicTimeIntervals: WARNING - initial mesh size larger than "
+                "target mesh size." << endl;
     }
-    
-    //- Bound number of intervals between 1 and maxIntervals
-    intervals = max(min(intervals, maxIntervals), 1.0);
-    
-    //- Set number of intervals in uniformIntervals class    
-    intervalLength_ = endTime_ / intervals;
-    
-    Info << "dynamicTimeIntervals: set first interval to " << intervalLength_
-         << " s, which corresponds to approx. " << intervals
-         << " total intervals." << endl;
+    //- Otherwise, estimate refined volume required to hit target mesh size
+    else
+    {
+        //- Estimate unrefined mesh size if not provided
+        if (unrefinedSize_ < 0.0)
+        {
+            unrefinedSize_ = gSum(mesh_.V()) / nCells0;
+            
+            Info << "dynamicTimeIntervals: estimated unrefined mesh size "
+                 << "to be " << unrefinedSize_ << " m." << endl;
+        }
+        
+        //- Estimate volume of refined scan path to hit target mesh size
+        const scalar refVol
+            = Foam::pow(unrefinedSize_, 3.0) * (targetCells - nCells0)
+              / (Foam::pow(2.0, 3.0 * nLevels_) - 1.0);
+              
+        //- Refine first interval using volume estimate, and set next update
+        //  time using the refinementController::refineUsingVolume function
+        updateTime_ =
+            refinementController::refineUsingVolume
+            (
+                refVol,
+                minIntervalTime_
+            ).value();
+        
+        intervalLength_
+            = max(updateTime_ - mesh_.time().value(), minIntervalTime_);
+            
+        const scalar intervals = endTime_ / intervalLength_;
+        
+        Info << "dynamicTimeIntervals: estimated length of first interval to "
+             << "be " << intervalLength_ << " s from refined scan path volume,"
+             << " corresponding to " << intervals << " intervals." << endl;
+    }
 }
 
 

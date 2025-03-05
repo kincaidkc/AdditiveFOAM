@@ -166,6 +166,14 @@ public:
         
         //- Refine along scan path until specified time
         virtual void refineUsingTime(const scalar& refineTime);
+        
+        //- Refine along scan path until volume of refined region reaches
+        //  provided target. Returns time at which target is reached.
+        virtual dimensionedScalar refineUsingVolume
+        (
+            const dimensionedScalar& refineVol,
+            const scalar& minIntervalTime = 0.0
+        );
     
         //- Update refinementField
         virtual bool update() = 0;
