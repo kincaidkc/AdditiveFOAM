@@ -18,7 +18,7 @@ License
     You should have received a copy of the GNU General Public License
     along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
 Class
-    Foam::functionObjects::unmappedSolidificationFields
+    Foam::functionObjects::solidificationData
 Description
     This function object records the solidification cooling rate and thermal
     gradient for additive manufacturing simulations. Each time a cell crosses
@@ -34,9 +34,9 @@ Description
     
     Example of function object specification:
     \verbatim
-    unmappedSolidificationFields1
+    solidificationData1
     {
-        type            unmappedSolidificationFields;
+        type            solidificationData;
         
         libs            ("libadditiveFoamFunctionObjects.so");
         
@@ -51,18 +51,18 @@ Description
 Usage
     \table
         Property     | Description               | Required | Default value
-        type         | type name: unmappedSolidificationFields | yes      |
+        type         | type name: solidificationData | yes      |
         AMR          | is this an AMR simulation?  | no       | no
         refinedSize  | length scale of fully refined cell | no | 0
         Tl           | liquidus/melting temperature of material | yes |
         trackMelting | record melting events       | no         | false
     \endtable
 SourceFiles
-    unmappedSolidificationFields.C
+    solidificationData.C
 \*---------------------------------------------------------------------------*/
 
-#ifndef unmappedSolidificationFields_H
-#define unmappedSolidificationFields_H
+#ifndef solidificationData_H
+#define solidificationData_H
 
 #include "fvMeshFunctionObject.H"
 #include "meshSearch.H"
@@ -80,10 +80,10 @@ namespace functionObjects
 {
 
 /*---------------------------------------------------------------------------*\
-                       Class unmappedSolidificationFields Declaration
+                       Class solidificationData Declaration
 \*---------------------------------------------------------------------------*/
 
-class unmappedSolidificationFields
+class solidificationData
 :
     public fvMeshFunctionObject
 {
@@ -106,14 +106,26 @@ class unmappedSolidificationFields
 
         //- Pointer to temperature field
         const volScalarField& T_;
-
-        //- Cooling rate field
+        
+        //- Time derivative of temperature
+        volScalarField dTdt_;
+        
+        //- Solidification cooling rate (for non-AMR case)
         volScalarField R_;
+        
+        //- Solidification temperature gradient (for non-AMR case)
+        volScalarField G_;
+        
+        //- Melt time (for non-AMR case)
+        volScalarField tm_;
+        
+        //- Solidification time (for non-AMR case)
+        volScalarField ts_;
 
-        //- List of solidification events
+        //- List of solidification events (for AMR case)
         DynamicList<List<scalar>> solidificationEvents_;
         
-        //- List of melting events
+        //- List of melting events (for AMR case)
         DynamicList<List<scalar>> meltingEvents_;
 
 
@@ -125,13 +137,13 @@ class unmappedSolidificationFields
 public:
 
     //- Runtime type information
-    TypeName("unmappedSolidificationFields");
+    TypeName("solidificationData");
 
 
     // Constructors
 
         //- Construct from Time and dictionary
-        unmappedSolidificationFields
+        solidificationData
         (
             const word& name,
             const Time& runTime,
@@ -139,16 +151,16 @@ public:
         );
 
         //- Disallow default bitwise copy construction
-        unmappedSolidificationFields(const unmappedSolidificationFields&) = delete;
+        solidificationData(const solidificationData&) = delete;
 
 
     //- Destructor
-    virtual ~unmappedSolidificationFields();
+    virtual ~solidificationData();
 
 
     // Member Functions
 
-        //- Read the unmappedSolidificationFields data
+        //- Read the solidificationData data
         virtual bool read(const dictionary&);
 
         //- Return the list of fields required
@@ -160,7 +172,7 @@ public:
         //- Execute at the final time-loop, currently does nothing
         virtual bool end();
 
-        //- Calculate and write unmappedSolidificationFields
+        //- Calculate and write solidificationData
         virtual bool write();
 
         //- Update for mesh point-motion
@@ -179,7 +191,7 @@ public:
     // Member Operators
 
         //- Disallow default bitwise assignment
-        void operator=(const unmappedSolidificationFields&) = delete;
+        void operator=(const solidificationData&) = delete;
 };
 
 
