@@ -65,11 +65,13 @@ SourceFiles
 #define solidificationData_H
 
 #include "fvMeshFunctionObject.H"
-#include "meshSearch.H"
+//#include "meshSearch.H"
+#include "treeBoundBox.H"
 #include "volFields.H"
 #include "volPointInterpolation.H"
 #include "writeFile.H"
 #include "OFstream.H"
+#include "labelVector.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -94,12 +96,18 @@ class solidificationData
 
         //- AMR switch
         const bool AMR_;
+        
+        //- Write csv file for non-AMR case
+        const bool writeCsv_;
+        
+        //- Bounding box for AMR background mesh
+        treeBoundBox bb_;
+        
+        //- Number of cells in each direction of background mesh
+        labelVector nBgPts_;
 
         //- Side length of fully refined cells
         scalar refinedSize_;
-        
-        //- Switch to track melting time
-        const bool trackMelting_;
 
         //- Liquidus temperature
         const scalar Tl_;
@@ -121,12 +129,12 @@ class solidificationData
         
         //- Solidification time (for non-AMR case)
         volScalarField ts_;
+        
+        //- Time above melting (for non-AMR case)
+        volScalarField tam_;
 
         //- List of solidification events (for AMR case)
-        DynamicList<List<scalar>> solidificationEvents_;
-        
-        //- List of melting events (for AMR case)
-        DynamicList<List<scalar>> meltingEvents_;
+        DynamicList<List<scalar>> solidData_;
 
 
     // Private Member Functions
