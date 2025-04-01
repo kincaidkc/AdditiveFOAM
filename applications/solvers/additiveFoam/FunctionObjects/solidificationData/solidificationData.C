@@ -397,7 +397,7 @@ bool Foam::functionObjects::solidificationData::write()
                     + Foam::name(Pstream::myProcNo()) + ".csv");
 
         //- Write header
-        os << "x,y,z,G,R,tm,ts,tam\n";
+        os << "x,y,z,G,R,tm,ts,tam,melted?\n";
 
         //- Write each event in series to file
         for (int i = 0; i < solidData_.size(); ++i)
@@ -410,7 +410,8 @@ bool Foam::functionObjects::solidificationData::write()
                 os << solidData_[i][j] << ",";
             }
 
-            os << solidData_[i][n] << "\n";
+            os << solidData_[i][n] << ","
+               << (solidData_[i][n] > 0.0 ? 1.0 : 0.0) << "\n";
         }
     }
     
@@ -431,7 +432,7 @@ bool Foam::functionObjects::solidificationData::write()
                     + Foam::name(Pstream::myProcNo()) + ".csv");
 
         //- Write header
-        os << "x,y,z,G,R,tm,ts,tam\n";
+        os << "x,y,z,G,R,tm,ts,tam,melted?\n";
         
         const auto& meshC = mesh_.C();
         const pointField& points = mesh_.points();
@@ -457,7 +458,8 @@ bool Foam::functionObjects::solidificationData::write()
             const auto& C = meshC[i];
             
             os << C[0] << "," << C[1] << "," << C[2] << "," << G_[i] << ","
-               << R_[i] << "," << tm_[i] << "," << ts_[i] << "," << tam_[i] << endl;
+               << R_[i] << "," << tm_[i] << "," << ts_[i] << "," << tam_[i]
+               << "," << (tam_[i] > 0.0 ? 1.0 : 0.0) << endl;
         }
     }
 
