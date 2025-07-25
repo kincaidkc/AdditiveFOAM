@@ -188,9 +188,9 @@ Foam::functionObjects::solidificationData::solidificationData
                 {
                     List<scalar> datai(8);
                     
-                    datai[0] = bb_.min()[0] + x * refinedSize_;
-                    datai[1] = bb_.min()[1] + y * refinedSize_;
-                    datai[2] = bb_.min()[2] + z * refinedSize_;
+                    datai[0] = bb_.min()[0] + x * refinedSize_ + refinedSize_ / 2.0;
+                    datai[1] = bb_.min()[1] + y * refinedSize_ + refinedSize_ / 2.0;
+                    datai[2] = bb_.min()[2] + z * refinedSize_ + refinedSize_ / 2.0;
                     datai[3] = 0.0; // Temperature gradient
                     datai[4] = 0.0; // Cooling rate
                     datai[5] = 0.0; // Melting time
