@@ -66,14 +66,23 @@ protected:
 
     //- Protected data
         
-        //- Target cells per processor (default 10k)
+        //- Target cells per processor (default 5k)
         const int cellsPerProc_;
+        
+        //- Target total mesh size
+        const int targetCells_;
         
         //- Characteristic length of unrefined cells
         dimensionedScalar unrefinedSize_;
         
         //- Target volume of refined region
         dimensionedScalar refVol_;
+        
+        //- Relaxation factor for rescaling. Default is 1 (no relaxation)
+        scalar relax_;
+        
+        //- Rescaling factor. Setting relax = 0 disables rescaling.
+        scalar scale_;
         
         //- Time at which to update again
         dimensionedScalar updateTime_;

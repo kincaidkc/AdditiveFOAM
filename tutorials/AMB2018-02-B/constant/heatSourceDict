@@ -41,7 +41,10 @@ beam
 refinementControl
 {
     refine                  true;
+    
     nLevels                 2;
+    
+    buffer                  (100e-6 100e-6 50e-6);
     
     refinementTemperature   1400;
         
@@ -49,15 +52,29 @@ refinementControl
     //refinementController    uniformIntervals;
     //refinementController    ROAMR;
     //refinementController    timeStep;
+    //refinementController    refinementVolume;
     
-    uniformIntervalsCoeffs
+    staticTimeIntervalsCoeffs
     {
         intervals   5;
     }
     
-    ROAMRCoeffs
+    dynamicTimeIntervalsCoeffs
     {
         cellsPerProc        10000;
+        
+        unrefinedSize       40e-6;
+        
+        relax               1.0;
+    }
+    
+    refinementVolumeCoeffs
+    {
+        cellsPerProc        10000;
+        
+        unrefinedSize       40e-6;
+        
+        relax               1.0;
     }
 }
 

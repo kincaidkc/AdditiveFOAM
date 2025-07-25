@@ -55,25 +55,24 @@ Foam::refinementControllers::refinementVolume::refinementVolume
 :
     refinementController(typeName, sources, dict, mesh),
     coeffs_(refinementDict_.optionalSubDict(typeName + "Coeffs")),
-    cellsPerProc_(coeffs_.lookupOrDefault<int>("cellsPerProc", 10000)),
+    cellsPerProc_(coeffs_.lookupOrDefault<int>("cellsPerProc", 5000)),
+    targetCells_(cellsPerProc_ * Pstream::nProcs()),
     unrefinedSize_
     (
         dimLength,
         coeffs_.lookupOrDefault<scalar>("unrefinedSize", -1.0)
     ),
     refVol_(dimVolume, 0.0),
+    relax_(coeffs_.lookupOrDefault<scalar>("relax", 1.0)),
+    scale_(relax_ > 0.0 ? 0.5 : 1.0),
     updateTime_(dimTime, 0.0)
 {
-    //- Estimate the volume of the refined region corresponding to the target
-    //  mesh size, calculated from the number of CPUs and target cells per CPU
-    scalar targetCells = cellsPerProc_ * Pstream::nProcs();
-    
     //- Find initial mesh size
     scalar nCells0 = mesh_.nCells();
     reduce(nCells0, sumOp<scalar>());
     
     //- Provide warning if target mesh size is smaller than initial mesh size
-    if (nCells0 > targetCells)
+    if (nCells0 > targetCells_)
     {
         Info << "refinementVolume: WARNING - initial mesh size larger than "
                 "target mesh size." << endl;
@@ -90,7 +89,7 @@ Foam::refinementControllers::refinementVolume::refinementVolume
                  << "to be " << unrefinedSize_ << " m." << endl;
         }
         
-        refVol_ = Foam::pow(unrefinedSize_, 3.0) * (targetCells - nCells0)
+        refVol_ = Foam::pow(unrefinedSize_, 3.0) * (targetCells_ - nCells0)
                   / (Foam::pow(2.0, 3.0 * nLevels_) - 1.0);
                   
         Info << "refinementVolume: estimated refinement volume is "
@@ -127,9 +126,19 @@ bool Foam::refinementControllers::refinementVolume::update()
         
         Info << "refinementVolume: Current CPU load is "
              << currCellsPerProc << " cells per processor." << endl;
+             
+        //- Recompute scale factor
+        if (mesh_.time().value() > 0.0)
+        {
+            scale_ = relax_ * scale_ * targetCells_ / nCells
+                     - (1.0 - relax_) * scale_;
+        }
+        
+        Info << "refinementVolume: Current scale factor is " << scale_ << endl;
         
         //- Update marker field using refinement volume strategy
-        updateTime_ = refinementController::refineUsingVolume(refVol_);
+        updateTime_
+            = refinementController::refineUsingVolume(scale_ * refVol_);
     }
 
     return true;
