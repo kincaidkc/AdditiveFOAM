@@ -49,9 +49,9 @@ refinementControl
     refinementTemperature   1400;
         
     refinementController    none;
-    //refinementController    uniformIntervals;
-    //refinementController    ROAMR;
     //refinementController    timeStep;
+    //refinementController    staticTimeIntervals;
+    //refinementController    dynamicTimeIntervals;
     //refinementController    refinementVolume;
     
     staticTimeIntervalsCoeffs
