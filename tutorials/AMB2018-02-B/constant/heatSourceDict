@@ -48,6 +48,7 @@ refinementControl
     refinementController    none;
     //refinementController    uniformIntervals;
     //refinementController    ROAMR;
+    //refinementController    timeStep;
     
     uniformIntervalsCoeffs
     {
