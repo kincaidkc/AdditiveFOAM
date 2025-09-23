@@ -45,14 +45,14 @@ refinementControl
     
     refinementTemperature   1250;
     
-    refinementController    staticTimeIntervals;
+    refinementController    refinementVolume;
     
-    staticTimeIntervalsCoeffs
+    refinementVolumeCoeffs
     {
-        intervals   20;
-        
-        buffer      (80e-6 80e-6 100e-6);
+        cellsPerProc   10000;
     }
+    
+    buffer      (250e-6 250e-6 100e-6);
 }
 
 // ************************************************************************* //

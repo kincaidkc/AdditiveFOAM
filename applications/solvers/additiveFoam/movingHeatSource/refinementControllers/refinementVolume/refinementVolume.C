@@ -55,46 +55,43 @@ Foam::refinementControllers::refinementVolume::refinementVolume
 :
     refinementController(typeName, sources, dict, mesh),
     coeffs_(refinementDict_.optionalSubDict(typeName + "Coeffs")),
-    cellsPerProc_(coeffs_.lookupOrDefault<int>("cellsPerProc", 5000)),
-    targetCells_(cellsPerProc_ * Pstream::nProcs()),
-    unrefinedSize_
-    (
-        dimLength,
-        coeffs_.lookupOrDefault<scalar>("unrefinedSize", -1.0)
-    ),
-    refVol_(dimVolume, 0.0),
-    relax_(coeffs_.lookupOrDefault<scalar>("relax", 1.0)),
-    scale_(relax_ > 0.0 ? 0.5 : 1.0),
-    updateTime_(dimTime, 0.0)
+    targetCellsPerProc_(coeffs_.lookupOrDefault<int>("cellsPerProc", 5000)),
+    targetRefinementVolume_(0.0),
+    minRefinementVolume_(0.0),
+    updateTime_(dimTime, 0.0),
+    cellLoadBalanceRatio_(1.0)
 {
-    //- Find initial mesh size
-    scalar nCells0 = mesh_.nCells();
-    reduce(nCells0, sumOp<scalar>());
+    minRefinementVolume_ = cmptProduct(buffer_);
+
+
+    Info << "minRefinementVolume_: " << minRefinementVolume_ << endl;
+
+    label nCells0 = mesh_.nCells();
+    reduce(nCells0, sumOp<label>());
+
+    // OPTION 1:
+    scalar refinementCells_ = minRefinementVolume_ * nCells0 / gSum(mesh_.V());
     
-    //- Provide warning if target mesh size is smaller than initial mesh size
-    if (nCells0 > targetCells_)
-    {
-        Info << "refinementVolume: WARNING - initial mesh size larger than "
-                "target mesh size." << endl;
-    }
-    //- Otherwise, estimate refined volume required to hit target mesh size
-    else
-    {
-        //- Estimate unrefined mesh size if not provided
-        if (unrefinedSize_.value() < 0.0)
-        {
-            unrefinedSize_ = gSum(mesh_.V()) / nCells0;
-            
-            Info << "refinementVolume: estimated unrefined mesh size "
-                 << "to be " << unrefinedSize_ << " m." << endl;
-        }
-        
-        refVol_ = Foam::pow(unrefinedSize_, 3.0) * (targetCells_ - nCells0)
-                  / (Foam::pow(2.0, 3.0 * nLevels_) - 1.0);
-                  
-        Info << "refinementVolume: estimated refinement volume is "
-             << refVol_.value() << " m^3" << endl;
-    }    
+    label minCellsPerCpu_ =
+    (
+        nCells0
+      + refinementCells_ * (Foam::pow(2.0, 3.0 * nLevels_) - 1.0)
+    ) / Pstream::nProcs();
+
+    targetCellsPerProc_ = max(targetCellsPerProc_, minCellsPerCpu_);
+
+    targetRefinementVolume_ =
+        0.5
+      * (gSum(mesh_.V()) / nCells0)
+      * max(targetCellsPerProc_*Pstream::nProcs() - nCells0, 0.0)
+      / (Foam::pow(2.0, 3.0 * nLevels_) - 1.0);
+
+    Info << "targetRefinementVolume_: " << targetRefinementVolume_ << endl;
+    Info << "targetCellsPerProc_: " << targetCellsPerProc_ << endl;
+  
+    updateTime_ = refinementController::refineUsingVolume(targetRefinementVolume_);
+    
+    Info << "Initial AMR update time: " << updateTime_ << endl;
 }
 
 
@@ -102,43 +99,51 @@ Foam::refinementControllers::refinementVolume::refinementVolume
 
 bool Foam::refinementControllers::refinementVolume::update()
 {
-    //- Update if past update time
-    if (updateTime_.value() - mesh_.time().value() < small)
+    // 0a. Calculate the total number of cells in mesh
+    label nCellsTotal = mesh_.nCells();
+    reduce(nCellsTotal, sumOp<label>());
+    scalar currentCellsPerProc = nCellsTotal / Pstream::nProcs();
+    
+    // 0b. Calculate cellLoadBalanceRatio from current number of cells and target
+    cellLoadBalanceRatio_ = targetCellsPerProc_ / currentCellsPerProc;
+       
+    if(updateTime_.value() - mesh_.time().value() < small)
     {
-        //- Refine in regions above specified temperature
+        // 1. Reactive refinement based on temperature
         refinementController::refineUsingTemperature();
 
-        //- Don't perform additional refinements if scan path is completed
+        // 2. Scan path completed
         if ((endTime_ - mesh_.time().value()) < small)
         {
-            Info << "refinementVolume: Scan path completed. Continuing AMR"
-                 << " checks for possible mesh coarsening" << endl;
-                 
-            //- TODO: increase updateTime_ by some increment
-                 
+            Info<< typeName << ": "
+                << "Scan path completed. "
+                << "Continuing AMR checks for possible mesh coarsening."
+                << endl;
+
+            // TODO: Fix hardcoded dilation
+            updateTime_ = mesh_.time().value() + 10*mesh_.time().deltaTValue();
             return true;
         }
-        
-        //- Calculate current CPU load (cells per processor)
-        label nCells = mesh_.nCells();
-        reduce(nCells, sumOp<label>());
-        scalar currCellsPerProc = nCells / Pstream::nProcs();
-        
-        Info << "refinementVolume: Current CPU load is "
-             << currCellsPerProc << " cells per processor." << endl;
-             
-        //- Recompute scale factor
-        if (mesh_.time().value() > 0.0)
-        {
-            scale_ = relax_ * scale_ * targetCells_ / nCells
-                     - (1.0 - relax_) * scale_;
-        }
-        
-        Info << "refinementVolume: Current scale factor is " << scale_ << endl;
-        
-        //- Update marker field using refinement volume strategy
-        updateTime_
-            = refinementController::refineUsingVolume(scale_ * refVol_);
+
+        targetRefinementVolume_ =
+            max
+            (
+                targetRefinementVolume_ * cellLoadBalanceRatio_,
+                cmptProduct(buffer_)
+            );
+
+        // 3. Predictive refinement using dynamic target volume    
+        updateTime_ =
+            refinementController::refineUsingVolume(targetRefinementVolume_);
+            
+            
+        // TODO: Should we control dilation and shrinking here?
+
+        Info<< typeName << ":" << endl
+            << "Target refinement volume: " << targetRefinementVolume_ << endl
+            << "Min refinement volume: " << minRefinementVolume_ << endl
+            << "Next refinement check is: " << updateTime_ << endl            
+            << "Average load imbalance: " << cellLoadBalanceRatio_ << endl;
     }
 
     return true;
