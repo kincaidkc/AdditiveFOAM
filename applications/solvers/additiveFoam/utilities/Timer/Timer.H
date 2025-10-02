@@ -63,9 +63,10 @@ class Timers
     private:
         DynamicList<Timer> timers;
         const Time& runTime_;
+	const std::string timerName_;
 
     public:
-        Timers(const Time& runTime);
+        Timers(const Time& runTime, const std::string& timerName);
 
         void createTimer(const std::string& name);
         void start(const std::string& name);

@@ -121,7 +121,7 @@ bool Foam::refinementControllers::refinementVolume::update()
                 << endl;
 
             // TODO: Fix hardcoded dilation
-            updateTime_ = mesh_.time().value() + 10*mesh_.time().deltaTValue();
+            updateTime_ = mesh_.time() + 10*mesh_.time().deltaT();
             return true;
         }
 
