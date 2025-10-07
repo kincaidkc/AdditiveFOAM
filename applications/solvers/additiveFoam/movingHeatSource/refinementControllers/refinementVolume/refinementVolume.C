@@ -61,7 +61,7 @@ Foam::refinementControllers::refinementVolume::refinementVolume
     updateTime_(dimTime, 0.0),
     cellLoadBalanceRatio_(1.0)
 {
-    minRefinementVolume_ = cmptProduct(buffer_);
+    minRefinementVolume_ = 6.0 * cmptProduct(buffer_);
 
 
     Info << "minRefinementVolume_: " << minRefinementVolume_ << endl;
