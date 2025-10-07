@@ -243,12 +243,12 @@ Foam::dimensionedScalar Foam::refinementController::refineUsingVolume
     const Foam::dimensionedScalar& refineVol,
     const Foam::scalar& minIntervalTime
 )
-{    
+{
     //- Set next refinement time to current time
     scalar refTime = mesh_.time().value();
     
     //- Find minimum refinement time
-    scalar minRefTime = refTime + minIntervalTime;
+    //scalar minRefTime = refTime + minIntervalTime;
 
     //- Calculate the bounding box for each cell
     List<treeBoundBox> cellBbs(mesh_.nCells());
@@ -328,6 +328,8 @@ Foam::dimensionedScalar Foam::refinementController::refineUsingVolume
             dt = min(dt, scanTime);
         }
     }
+
+    scalar minRefTime = refTime + dt;
 
     //- Get volume of refined field for current beam positions and other
     //  functions, e.g. refineUsingTemperature
