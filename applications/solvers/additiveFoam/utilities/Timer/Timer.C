@@ -57,7 +57,7 @@ double Timer::getTotalTime() const
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-Timers::Timers(const Time& runTime) : runTime_(runTime) {}
+Timers::Timers(const Time& runTime, const std::string& timerName) : runTime_(runTime), timerName_(timerName) {}
 
 void Timers::createTimer(const std::string& name)
 {
@@ -100,7 +100,7 @@ void Timers::write() const
 
     mkDir(timerPath);
 
-    OFstream os(timerPath + "/" + "timers_" + Foam::name(Pstream::myProcNo()) + ".csv");
+    OFstream os(timerPath + "/" + "timers_" + timerName_ + "_" + Foam::name(Pstream::myProcNo()) + ".csv");
 
     for (const auto& timer : timers)
     {

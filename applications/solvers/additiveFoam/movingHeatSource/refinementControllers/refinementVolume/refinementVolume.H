@@ -66,17 +66,20 @@ protected:
 
     //- Protected data
         
-        //- Target cells per processor (default 10k)
-        const int cellsPerProc_;
-        
-        //- Characteristic length of unrefined cells
-        dimensionedScalar unrefinedSize_;
-        
+        //- Target cells per processor (default 5k)
+        label targetCellsPerProc_;
+                
         //- Target volume of refined region
-        dimensionedScalar refVol_;
+        scalar targetRefinementVolume_;
+
+        //- Minimum refinement volume
+        scalar minRefinementVolume_;
         
         //- Time at which to update again
         dimensionedScalar updateTime_;
+        
+        //- Load imbalance ratio to check AMR performance
+        scalar cellLoadBalanceRatio_;
 
 public:
 

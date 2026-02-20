@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
     #include "initContinuityErrs.H"
     
     // Initialize profiling timer
-    Timers timer(runTime);
+    Timers timer(runTime, "additiveFoam");
 
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
     
@@ -122,8 +122,10 @@ int main(int argc, char *argv[])
         timer.start("Thermo Solve");
         #include "thermo/TEqn.H"
         timer.stop("Thermo Solve");
-        
+
+	timer.start("Write Time");
         runTime.write();
+	timer.stop("Write Time");
 
         Info<< "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
             << "  ClockTime = " << runTime.elapsedClockTime() << " s"

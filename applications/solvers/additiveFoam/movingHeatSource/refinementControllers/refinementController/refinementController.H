@@ -172,7 +172,7 @@ public:
         virtual dimensionedScalar refineUsingVolume
         (
             const dimensionedScalar& refineVol,
-            const scalar& minIntervalTime = 0.0
+            const scalar& minRefVol = 0.0
         );
     
         //- Update refinementField
