@@ -61,7 +61,7 @@ Foam::refinementControllers::refinementVolume::refinementVolume
     updateTime_(dimTime, 0.0),
     cellLoadBalanceRatio_(1.0)
 {
-    minRefinementVolume_ = 4.0 * cmptProduct(buffer_);
+    minRefinementVolume_ = 32.0 * cmptProduct(buffer_);
 
 
     Info << "minRefinementVolume_: " << minRefinementVolume_ << endl;
@@ -134,7 +134,7 @@ bool Foam::refinementControllers::refinementVolume::update()
 
         // 3. Predictive refinement using dynamic target volume    
         updateTime_ =
-            refinementController::refineUsingVolume(targetRefinementVolume_);
+            refinementController::refineUsingVolume(targetRefinementVolume_, minRefinementVolume_);
             
             
         // TODO: Should we control dilation and shrinking here?

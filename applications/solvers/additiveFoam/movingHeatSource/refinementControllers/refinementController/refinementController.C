@@ -241,9 +241,10 @@ void Foam::refinementController::refineUsingTime(const Foam::scalar& refineTime)
 Foam::dimensionedScalar Foam::refinementController::refineUsingVolume
 (
     const Foam::dimensionedScalar& refineVol,
-    const Foam::scalar& minIntervalTime
+    const Foam::scalar& minRefVol
 )
 {    
+    const Foam::scalar minIntervalTime = 0.0;
     //- Set next refinement time to current time
     scalar refTime = mesh_.time().value();
     
@@ -275,6 +276,7 @@ Foam::dimensionedScalar Foam::refinementController::refineUsingVolume
     //- Mark current positions of all beams for refinement and find
     //  minimum time step for all beams
     scalar dt = 0.0;
+    scalar refVol = 0.0;
 
     forAll(sources_, i)
     {
@@ -300,6 +302,7 @@ Foam::dimensionedScalar Foam::refinementController::refineUsingVolume
             else if (cellBbs[celli].overlaps(beamBb))
             {
                 refinementField_[celli] = 1;
+		refVol += mesh_.V()[celli];
             }
         }
 
@@ -329,12 +332,19 @@ Foam::dimensionedScalar Foam::refinementController::refineUsingVolume
         }
     }
 
-    //- Get volume of refined field for current beam positions and other
-    //  functions, e.g. refineUsingTemperature
-    scalar refVol = fvc::domainIntegrate(refinementField_).value();
+    // Get volume of cells refined by current position only
+    reduce(refVol, sumOp<scalar>());
+
+    Info << "Refinement volume of current position only: " << refVol << endl;
+
+    //- Get volume of cells refined from other criteria, i.e. melt pool,
+    //  apart from those which were marked from the current beam position
+    const scalar meltPoolVol = fvc::domainIntegrate(refinementField_).value() - refVol;
+
+    Info << "Refinement volume of melt pool only: " << meltPoolVol << endl;
 
     //- March along scan path(s) and refine until target volume is reached
-    while ((refVol < refineVol.value()) || (refTime < minRefTime))
+    while (((refVol + meltPoolVol) < refineVol.value()) || (refTime < minRefTime) || (refVol < minRefVol))
     {
         //- Check that end time not reached
         if (refTime > endTime_)
@@ -380,6 +390,8 @@ Foam::dimensionedScalar Foam::refinementController::refineUsingVolume
     }
 
     refinementField_.correctBoundaryConditions();
+
+    Info << "Actual refinement volume: " << refVol << endl;
 
     return dimensionedScalar(dimTime, refTime);
 }
